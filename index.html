@@ -772,6 +772,12 @@
         </div>
 
         <div class="top-actions">
+            <div class="zoom-mode-group" style="background:var(--panel-bg); padding:4px; border-radius:10px; border:1px solid var(--border-color); box-shadow:0 4px 14px rgba(15,23,42,0.1);">
+                <button class="zoom-mode-btn active" data-mapstyle="vworld_base" onclick="setBaseMap('vworld_base')">🇰🇷 국내일반</button>
+                <button class="zoom-mode-btn" data-mapstyle="vworld_white" onclick="setBaseMap('vworld_white')">심플한글</button>
+                <button class="zoom-mode-btn" data-mapstyle="vworld_sat" onclick="setBaseMap('vworld_sat')">🛰️ 위성+도로</button>
+                <button class="zoom-mode-btn" data-mapstyle="vworld_dark" onclick="setBaseMap('vworld_dark')">🌙 야간지도</button>
+            </div>
             <button class="action-btn" onclick="toggleMetricMode()" id="metricModeBtn">
                 <span>🔄 표시기준:</span> <strong id="metricModeLabel">총액(억/만)</strong>
             </button>
@@ -1532,17 +1538,53 @@
             };
         }
 
-        // 지도 초기화 (서울·경기 한눈에 보이는 중심 좌표)
+        // 지도 초기화 (서울·경기 한눈에 보이는 중심 좌표, 국토교통부 VWorld 국내 한글지도 기본 적용)
         const map = L.map('map', {
-            zoomControl: false
+            zoomControl: false,
+            minZoom: 7,
+            maxZoom: 19
         }).setView([37.525, 127.02], 10);
 
         L.control.zoom({ position: 'bottomleft' }).addTo(map);
 
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-            attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
-            maxZoom: 19
-        }).addTo(map);
+        const baseMapLayers = {
+            vworld_base: L.tileLayer('https://xdworld.vworld.kr/2d/Base/service/{z}/{x}/{y}.png', {
+                attribution: '&copy; 국토교통부 VWorld 공간정보 오픈플랫폼 (국내 한글지도)',
+                maxZoom: 19
+            }),
+            vworld_white: L.tileLayer('https://xdworld.vworld.kr/2d/white/service/{z}/{x}/{y}.png', {
+                attribution: '&copy; 국토교통부 VWorld (백지도)',
+                maxZoom: 19
+            }),
+            vworld_sat: L.layerGroup([
+                L.tileLayer('https://xdworld.vworld.kr/2d/Satellite/service/{z}/{x}/{y}.jpeg', {
+                    attribution: '&copy; 국토교통부 VWorld (위성지도)',
+                    maxZoom: 19
+                }),
+                L.tileLayer('https://xdworld.vworld.kr/2d/Hybrid/service/{z}/{x}/{y}.png', {
+                    attribution: '&copy; 국토교통부 VWorld (하이브리드 한글지명)',
+                    maxZoom: 19
+                })
+            ]),
+            vworld_dark: L.tileLayer('https://xdworld.vworld.kr/2d/midnight/service/{z}/{x}/{y}.png', {
+                attribution: '&copy; 국토교통부 VWorld (야간지도)',
+                maxZoom: 19
+            })
+        };
+
+        let currentBaseLayer = baseMapLayers.vworld_base;
+        currentBaseLayer.addTo(map);
+
+        function setBaseMap(styleKey) {
+            if (currentBaseLayer) {
+                map.removeLayer(currentBaseLayer);
+            }
+            currentBaseLayer = baseMapLayers[styleKey] || baseMapLayers.vworld_base;
+            currentBaseLayer.addTo(map);
+            document.querySelectorAll('[data-mapstyle]').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.mapstyle === styleKey);
+            });
+        }
 
         const markersLayer = L.layerGroup().addTo(map);
         const circlesLayer = L.layerGroup().addTo(map);
