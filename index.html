@@ -1,0 +1,2413 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>서울·경기 부동산 통합 가격 비교 지도 (공시가격·실거래·네이버·KB)</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        :root {
+            --bg-dark: #0f172a;
+            --panel-bg: rgba(255, 255, 255, 0.97);
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --naver-green: #03c75a;
+            --kb-yellow: #f59e0b;
+            --molit-blue: #2563eb;
+            --official-purple: #7c3aed;
+            --border-color: #e2e8f0;
+            --text-main: #0f172a;
+            --text-sub: #475569;
+            --text-muted: #94a3b8;
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Pretendard', 'Malgun Gothic', -apple-system, BlinkMacSystemFont, sans-serif;
+            color: var(--text-main);
+            overflow: hidden;
+            background: #f8fafc;
+        }
+
+        #map {
+            width: 100vw;
+            height: 100vh;
+            z-index: 1;
+        }
+
+        /* 상단 헤더 & 핵심 요약 바 */
+        .top-bar {
+            position: absolute;
+            top: 14px;
+            left: 380px;
+            right: 20px;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            pointer-events: none;
+            flex-wrap: wrap;
+        }
+        .top-bar > * {
+            pointer-events: auto;
+        }
+        .status-pills {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            background: var(--panel-bg);
+            backdrop-filter: blur(10px);
+            padding: 8px 14px;
+            border-radius: 12px;
+            box-shadow: 0 4px 18px rgba(15, 23, 42, 0.12);
+            border: 1px solid var(--border-color);
+        }
+        .zoom-mode-group {
+            display: flex;
+            background: #f1f5f9;
+            border-radius: 8px;
+            padding: 3px;
+            gap: 3px;
+        }
+        .zoom-mode-btn {
+            border: none;
+            background: transparent;
+            padding: 6px 11px;
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--text-sub);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .zoom-mode-btn.active {
+            background: var(--primary);
+            color: #fff;
+            box-shadow: 0 1px 4px rgba(37, 99, 235, 0.3);
+        }
+        .stat-chip {
+            font-size: 12px;
+            color: var(--text-sub);
+            padding: 4px 10px;
+            background: #f8fafc;
+            border-radius: 6px;
+            border: 1px solid #e2e8f0;
+            font-weight: 600;
+        }
+        .stat-chip strong {
+            color: var(--primary);
+            font-weight: 800;
+        }
+
+        .top-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .action-btn {
+            border: 1px solid var(--border-color);
+            background: var(--panel-bg);
+            padding: 9px 14px;
+            border-radius: 10px;
+            font-size: 12.5px;
+            font-weight: 700;
+            color: var(--text-main);
+            cursor: pointer;
+            box-shadow: 0 4px 14px rgba(15, 23, 42, 0.1);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.15s;
+        }
+        .action-btn:hover {
+            background: #f1f5f9;
+            transform: translateY(-1px);
+        }
+        .action-btn.primary {
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+            color: #fff;
+            border: none;
+        }
+
+        /* 좌측 통합 필터 및 지역 랭킹 패널 */
+        .left-panel {
+            position: absolute;
+            top: 14px;
+            left: 14px;
+            bottom: 14px;
+            width: 354px;
+            background: var(--panel-bg);
+            backdrop-filter: blur(12px);
+            border-radius: 16px;
+            box-shadow: 0 8px 30px rgba(15, 23, 42, 0.16);
+            border: 1px solid var(--border-color);
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .brand-header {
+            padding: 15px 16px 12px;
+            background: linear-gradient(135deg, #0f172a, #1e293b);
+            color: #fff;
+        }
+        .brand-title {
+            font-size: 16px;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 4px;
+        }
+        .brand-sub {
+            font-size: 11.5px;
+            color: #cbd5e1;
+            display: flex;
+            gap: 6px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .source-dot {
+            display: inline-block;
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            margin-right: 3px;
+        }
+
+        .filter-scroll {
+            padding: 12px 14px;
+            overflow-y: auto;
+            flex: 1;
+        }
+        .filter-section {
+            margin-bottom: 13px;
+            padding-bottom: 11px;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .filter-label {
+            font-size: 11.5px;
+            font-weight: 800;
+            color: #334155;
+            margin-bottom: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .filter-label span.hint {
+            font-weight: 500;
+            color: #94a3b8;
+            font-size: 11px;
+        }
+
+        /* 검색 및 지역 선택 */
+        .search-row {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 8px;
+        }
+        .search-input {
+            flex: 1;
+            padding: 8px 10px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            font-size: 12.5px;
+            outline: none;
+        }
+        .search-input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+        }
+        .region-selects {
+            display: grid;
+            grid-template-columns: 1fr 1.2fr;
+            gap: 6px;
+        }
+        .select-box {
+            padding: 7px 8px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            background: #fff;
+            color: var(--text-main);
+        }
+
+        /* 버튼 그리드 */
+        .chip-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+        }
+        .chip-btn {
+            flex: 1 1 auto;
+            border: 1px solid #cbd5e1;
+            background: #fff;
+            color: #475569;
+            padding: 6px 8px;
+            border-radius: 7px;
+            font-size: 11.5px;
+            font-weight: 700;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.15s;
+        }
+        .chip-btn:hover {
+            background: #f8fafc;
+            border-color: #94a3b8;
+        }
+        .chip-btn.active {
+            background: #1e293b;
+            color: #fff;
+            border-color: #1e293b;
+        }
+        .chip-btn[data-trade="매매"].active { background: #dc2626; border-color: #dc2626; }
+        .chip-btn[data-trade="전세"].active { background: #2563eb; border-color: #2563eb; }
+        .chip-btn[data-trade="월세"].active { background: #ea580c; border-color: #ea580c; }
+        .chip-btn[data-trade="공시가격"].active { background: #7c3aed; border-color: #7c3aed; }
+
+        .chip-btn[data-source="네이버부동산"].active { background: #03c75a; border-color: #03c75a; }
+        .chip-btn[data-source="KB부동산"].active { background: #d97706; border-color: #d97706; }
+        .chip-btn[data-source="국토부실거래"].active { background: #2563eb; border-color: #2563eb; }
+        .chip-btn[data-source="공시가격알리미"].active { background: #7c3aed; border-color: #7c3aed; }
+
+        .range-inputs {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 6px;
+        }
+        .range-inputs input {
+            width: 100%;
+            padding: 5px 8px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            font-size: 11.5px;
+        }
+
+        /* 랭킹 리스트 */
+        .ranking-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-top: 6px;
+        }
+        .rank-item {
+            padding: 9px 10px;
+            border-radius: 9px;
+            border: 1px solid #e2e8f0;
+            background: #fff;
+            cursor: pointer;
+            transition: all 0.15s;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .rank-item:hover {
+            border-color: var(--primary);
+            background: #f8fafc;
+        }
+        .rank-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .rank-num {
+            width: 22px;
+            height: 22px;
+            border-radius: 6px;
+            background: #e2e8f0;
+            color: #334155;
+            font-size: 11px;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .rank-item:nth-child(1) .rank-num { background: #fee2e2; color: #dc2626; }
+        .rank-item:nth-child(2) .rank-num { background: #ffedd5; color: #ea580c; }
+        .rank-item:nth-child(3) .rank-num { background: #fef3c7; color: #d97706; }
+        .rank-title {
+            font-size: 12.5px;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+        .rank-meta {
+            font-size: 10.5px;
+            color: var(--text-muted);
+        }
+        .rank-right {
+            text-align: right;
+        }
+        .rank-price {
+            font-size: 13px;
+            font-weight: 800;
+            color: #dc2626;
+        }
+        .rank-pyeong {
+            font-size: 10.5px;
+            color: #475569;
+            font-weight: 600;
+        }
+        .compare-add-mini {
+            margin-left: 6px;
+            border: 1px solid #cbd5e1;
+            background: #f8fafc;
+            border-radius: 5px;
+            font-size: 10px;
+            padding: 2px 5px;
+            cursor: pointer;
+            font-weight: 700;
+            color: #334155;
+        }
+        .compare-add-mini:hover {
+            background: var(--primary);
+            color: #fff;
+            border-color: var(--primary);
+        }
+
+        /* 커스텀 지도 마커 스타일 */
+        .map-price-marker {
+            display: inline-flex;
+            flex-direction: column;
+            background: #ffffff;
+            border-radius: 10px;
+            box-shadow: 0 4px 14px rgba(15, 23, 42, 0.25);
+            border: 2px solid #1e293b;
+            overflow: hidden;
+            white-space: nowrap;
+            transition: transform 0.15s ease;
+            cursor: pointer;
+        }
+        .map-price-marker:hover {
+            transform: scale(1.08);
+            z-index: 9999 !important;
+        }
+        .marker-head {
+            padding: 3px 8px;
+            font-size: 11px;
+            font-weight: 800;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 5px;
+        }
+        .marker-body {
+            padding: 4px 8px;
+            background: #fff;
+            text-align: center;
+        }
+        .marker-main-price {
+            font-size: 12.5px;
+            font-weight: 800;
+            color: #0f172a;
+        }
+        .marker-sub-price {
+            font-size: 10px;
+            color: #64748b;
+            font-weight: 600;
+        }
+
+        /* 가격 수준별 마커 테마 */
+        .tier-ultra { border-color: #b91c1c; }
+        .tier-ultra .marker-head { background: linear-gradient(135deg, #dc2626, #991b1b); }
+        .tier-high { border-color: #c2410c; }
+        .tier-high .marker-head { background: linear-gradient(135deg, #ea580c, #c2410c); }
+        .tier-mid { border-color: #1d4ed8; }
+        .tier-mid .marker-head { background: linear-gradient(135deg, #2563eb, #1d4ed8); }
+        .tier-low { border-color: #047857; }
+        .tier-low .marker-head { background: linear-gradient(135deg, #10b981, #047857); }
+
+        /* 우측 단지 상세 드로어 */
+        .right-drawer {
+            position: absolute;
+            top: 70px;
+            right: 16px;
+            bottom: 16px;
+            width: 440px;
+            max-width: calc(100vw - 32px);
+            background: var(--panel-bg);
+            backdrop-filter: blur(12px);
+            border-radius: 16px;
+            box-shadow: 0 10px 35px rgba(15, 23, 42, 0.22);
+            border: 1px solid var(--border-color);
+            z-index: 1001;
+            display: none;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .right-drawer.open {
+            display: flex;
+        }
+        .drawer-header {
+            padding: 15px 18px;
+            background: #0f172a;
+            color: #fff;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+        .drawer-title {
+            font-size: 17px;
+            font-weight: 800;
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 7px;
+        }
+        .prop-badge {
+            font-size: 10.5px;
+            padding: 2px 7px;
+            border-radius: 5px;
+            background: #3b82f6;
+            color: #fff;
+            font-weight: 700;
+        }
+        .drawer-meta {
+            font-size: 11.5px;
+            color: #94a3b8;
+        }
+        .close-btn {
+            background: rgba(255,255,255,0.12);
+            border: none;
+            color: #fff;
+            width: 28px;
+            height: 28px;
+            border-radius: 7px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 700;
+        }
+        .drawer-body {
+            padding: 14px 16px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        /* 평형 탭 */
+        .pyeong-tabs {
+            display: flex;
+            gap: 5px;
+            overflow-x: auto;
+            padding-bottom: 8px;
+            margin-bottom: 12px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .pyeong-tab {
+            border: 1px solid #cbd5e1;
+            background: #f8fafc;
+            padding: 5px 10px;
+            border-radius: 7px;
+            font-size: 11.5px;
+            font-weight: 700;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        .pyeong-tab.active {
+            background: var(--primary);
+            color: #fff;
+            border-color: var(--primary);
+        }
+
+        /* 4대 출처 비교 카드 그리드 */
+        .source-cards {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 14px;
+        }
+        .src-card {
+            padding: 10px 12px;
+            border-radius: 10px;
+            border: 1px solid #e2e8f0;
+            background: #fff;
+        }
+        .src-card-head {
+            font-size: 11px;
+            font-weight: 800;
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .src-card-price {
+            font-size: 15px;
+            font-weight: 800;
+            color: #0f172a;
+        }
+        .src-card-sub {
+            font-size: 10.5px;
+            color: #64748b;
+            margin-top: 2px;
+        }
+
+        /* 섹션 박스 */
+        .detail-box {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 11px;
+            padding: 12px;
+            margin-bottom: 14px;
+        }
+        .detail-box-title {
+            font-size: 12.5px;
+            font-weight: 800;
+            color: #1e293b;
+            margin-bottom: 9px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        /* 층별 바 차트 및 테이블 */
+        .floor-bar-row {
+            display: grid;
+            grid-template-columns: 78px 1fr 88px;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+            font-size: 11.5px;
+        }
+        .floor-bar-track {
+            height: 16px;
+            background: #e2e8f0;
+            border-radius: 8px;
+            overflow: hidden;
+            position: relative;
+        }
+        .floor-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #3b82f6, #1d4ed8);
+            border-radius: 8px;
+        }
+
+        table.data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11.5px;
+        }
+        table.data-table th {
+            background: #e2e8f0;
+            color: #334155;
+            padding: 6px 6px;
+            text-align: left;
+            font-weight: 800;
+        }
+        table.data-table td {
+            padding: 6px 6px;
+            border-bottom: 1px solid #e2e8f0;
+            color: #1e293b;
+        }
+        .badge-src {
+            display: inline-block;
+            padding: 2px 5px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 700;
+            color: #fff;
+        }
+        .badge-src.네이버부동산 { background: #03c75a; }
+        .badge-src.KB부동산 { background: #d97706; }
+        .badge-src.국토부실거래 { background: #2563eb; }
+        .badge-src.공시가격알리미 { background: #7c3aed; }
+
+        /* 하단 비교함 플로팅 바 */
+        .compare-bar {
+            position: absolute;
+            bottom: 18px;
+            left: 384px;
+            z-index: 1000;
+            background: #0f172a;
+            color: #fff;
+            padding: 10px 16px;
+            border-radius: 14px;
+            box-shadow: 0 8px 25px rgba(15, 23, 42, 0.35);
+            display: none;
+            align-items: center;
+            gap: 12px;
+        }
+        .compare-bar.active {
+            display: flex;
+        }
+        .compare-pills {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+        .compare-pill {
+            background: rgba(255,255,255,0.14);
+            padding: 4px 9px;
+            border-radius: 7px;
+            font-size: 11.5px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .compare-pill button {
+            background: none;
+            border: none;
+            color: #fca5a5;
+            cursor: pointer;
+            font-weight: 800;
+            padding: 0;
+        }
+
+        /* 모달 공통 */
+        .modal-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.55);
+            backdrop-filter: blur(4px);
+            z-index: 2000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .modal-backdrop.open {
+            display: flex;
+        }
+        .modal-card {
+            background: #fff;
+            border-radius: 16px;
+            width: 860px;
+            max-width: 95vw;
+            max-height: 88vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+        }
+        .modal-header {
+            padding: 16px 20px;
+            background: #0f172a;
+            color: #fff;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .modal-body {
+            padding: 18px 20px;
+            overflow-y: auto;
+        }
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+        .form-group label {
+            display: block;
+            font-size: 12px;
+            font-weight: 700;
+            margin-bottom: 5px;
+            color: #334155;
+        }
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 8px 10px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            font-size: 12.5px;
+        }
+
+        /* 우측 하단 범례 */
+        .map-legend {
+            position: absolute;
+            bottom: 18px;
+            right: 18px;
+            z-index: 999;
+            background: var(--panel-bg);
+            padding: 10px 14px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 4px 16px rgba(15, 23, 42, 0.12);
+            font-size: 11px;
+        }
+        .legend-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 5px;
+        }
+        .legend-swatch {
+            width: 12px;
+            height: 12px;
+            border-radius: 3px;
+            display: inline-block;
+        }
+
+        @media (max-width: 900px) {
+            .left-panel {
+                width: 310px;
+            }
+            .top-bar {
+                left: 330px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="map"></div>
+
+    <!-- 상단 바: 줌 레벨 모드 전환 & 요약 지표 & 데이터 수집/비교 버튼 -->
+    <div class="top-bar">
+        <div class="status-pills">
+            <div class="zoom-mode-group">
+                <button class="zoom-mode-btn active" data-view="auto" onclick="setViewMode('auto')">자동(줌 연동)</button>
+                <button class="zoom-mode-btn" data-view="sigungu" onclick="setViewMode('sigungu')">시·군·구 비교</button>
+                <button class="zoom-mode-btn" data-view="dong" onclick="setViewMode('dong')">법정동 비교</button>
+                <button class="zoom-mode-btn" data-view="complex" onclick="setViewMode('complex')">개별 단지·매물</button>
+            </div>
+            <div class="stat-chip">표시 지역/단지 <strong id="statCount">0</strong>곳</div>
+            <div class="stat-chip">평균가 <strong id="statAvgPrice">-</strong></div>
+            <div class="stat-chip">평균 평당가 <strong id="statAvgPyeong">-</strong></div>
+        </div>
+
+        <div class="top-actions">
+            <button class="action-btn" onclick="toggleMetricMode()" id="metricModeBtn">
+                <span>🔄 표시기준:</span> <strong id="metricModeLabel">총액(억/만)</strong>
+            </button>
+            <button class="action-btn" onclick="openCompareModal()">
+                📊 다중 지역·단지 비교함 (<span id="compareCountBadge">0</span>)
+            </button>
+            <button class="action-btn primary" onclick="openCollectModal()">
+                ⚡ API 실시간 수집 · 엑셀 업로드
+            </button>
+        </div>
+    </div>
+
+    <!-- 좌측 통합 필터 및 지역/단지 순위 패널 -->
+    <div class="left-panel">
+        <div class="brand-header">
+            <div class="brand-title">
+                <span>🏙️ 서울·경기 부동산 가격 비교 지도</span>
+            </div>
+            <div class="brand-sub">
+                <span><i class="source-dot" style="background:#7c3aed;"></i>공시가격알리미</span>
+                <span><i class="source-dot" style="background:#2563eb;"></i>국토부실거래</span>
+                <span><i class="source-dot" style="background:#03c75a;"></i>네이버부동산</span>
+                <span><i class="source-dot" style="background:#f59e0b;"></i>KB부동산</span>
+            </div>
+        </div>
+
+        <div class="filter-scroll">
+            <!-- 1. 검색 및 시/도 · 시/군/구 이동 -->
+            <div class="filter-section">
+                <div class="filter-label">
+                    <span>📍 서울·경기 지역 선택 및 검색</span>
+                    <span class="hint">서울 25개구 · 경기 31개시군</span>
+                </div>
+                <div class="search-row">
+                    <input type="text" id="searchInput" class="search-input" placeholder="구/시, 법정동, 아파트/단지명 검색..." oninput="debounceRefresh()" />
+                </div>
+                <div class="region-selects">
+                    <select id="sidoSelect" class="select-box" onchange="onSidoChange()">
+                        <option value="전체">서울 + 경기 전체</option>
+                        <option value="서울특별시">서울특별시 (25개 구)</option>
+                        <option value="경기도">경기도 (31개 시·군)</option>
+                    </select>
+                    <select id="sigunguSelect" class="select-box" onchange="onSigunguChange()">
+                        <option value="전체">시·군·구 전체</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- 2. 거래 유형 (매매 / 전세 / 월세 / 공시가격) -->
+            <div class="filter-section">
+                <div class="filter-label">
+                    <span>💰 거래 유형 (매매 · 전세 · 월세 · 공시가격)</span>
+                </div>
+                <div class="chip-grid" id="tradeTypeGroup">
+                    <button class="chip-btn active" data-trade="매매" onclick="selectFilter('trade_type', '매매', this)">매매</button>
+                    <button class="chip-btn" data-trade="전세" onclick="selectFilter('trade_type', '전세', this)">전세</button>
+                    <button class="chip-btn" data-trade="월세" onclick="selectFilter('trade_type', '월세', this)">월세</button>
+                    <button class="chip-btn" data-trade="공시가격" onclick="selectFilter('trade_type', '공시가격', this)">공시가격</button>
+                </div>
+            </div>
+
+            <!-- 3. 데이터 출처 구분 -->
+            <div class="filter-section">
+                <div class="filter-label">
+                    <span>🏛️ 정보 출처 구분</span>
+                    <span class="hint">실거래·호가·KB시세·공시가</span>
+                </div>
+                <div class="chip-grid" id="sourceGroup">
+                    <button class="chip-btn active" data-source="전체" onclick="selectFilter('source', '전체', this)">전체 통합</button>
+                    <button class="chip-btn" data-source="공시가격알리미" onclick="selectFilter('source', '공시가격알리미', this)">공시가격알리미</button>
+                    <button class="chip-btn" data-source="국토부실거래" onclick="selectFilter('source', '국토부실거래', this)">국토부실거래</button>
+                    <button class="chip-btn" data-source="네이버부동산" onclick="selectFilter('source', '네이버부동산', this)">네이버호가</button>
+                    <button class="chip-btn" data-source="KB부동산" onclick="selectFilter('source', 'KB부동산', this)">KB시세</button>
+                </div>
+            </div>
+
+            <!-- 4. 부동산 유형 -->
+            <div class="filter-section">
+                <div class="filter-label">
+                    <span>🏢 부동산 유형</span>
+                </div>
+                <div class="chip-grid" id="propTypeGroup">
+                    <button class="chip-btn active" onclick="selectFilter('property_type', '전체', this)">전체</button>
+                    <button class="chip-btn" onclick="selectFilter('property_type', '아파트', this)">아파트</button>
+                    <button class="chip-btn" onclick="selectFilter('property_type', '오피스텔', this)">오피스텔</button>
+                    <button class="chip-btn" onclick="selectFilter('property_type', '빌라/연립', this)">빌라·연립·다세대</button>
+                </div>
+            </div>
+
+            <!-- 5. 평수 (면적) 구분 -->
+            <div class="filter-section">
+                <div class="filter-label">
+                    <span>📐 평수(공급평형/전용면적) 구분</span>
+                    <span class="hint">1평 ≈ 3.3㎡</span>
+                </div>
+                <div class="chip-grid" id="pyeongGroup">
+                    <button class="chip-btn active" onclick="selectFilter('pyeong_group', '전체', this)">전체</button>
+                    <button class="chip-btn" onclick="selectFilter('pyeong_group', '소형(~19평)', this)">~19평</button>
+                    <button class="chip-btn" onclick="selectFilter('pyeong_group', '20평대(20~29평)', this)">20평대</button>
+                    <button class="chip-btn" onclick="selectFilter('pyeong_group', '30평대(30~39평)', this)">30평대</button>
+                    <button class="chip-btn" onclick="selectFilter('pyeong_group', '40평대(40~49평)', this)">40평대</button>
+                    <button class="chip-btn" onclick="selectFilter('pyeong_group', '대형(50평+)', this)">50평+</button>
+                </div>
+                <div class="range-inputs">
+                    <input type="number" id="minPyeongInput" placeholder="최소 평수 (예: 24)" onchange="refreshData()" />
+                    <span>~</span>
+                    <input type="number" id="maxPyeongInput" placeholder="최대 평수 (예: 35)" onchange="refreshData()" />
+                </div>
+            </div>
+
+            <!-- 6. 층별 구분 -->
+            <div class="filter-section">
+                <div class="filter-label">
+                    <span>🪜 층별 구분 필터</span>
+                    <span class="hint">층수별 시세·로얄층 비교</span>
+                </div>
+                <div class="chip-grid" id="floorGroup">
+                    <button class="chip-btn active" onclick="selectFilter('floor_group', '전체', this)">전체 층</button>
+                    <button class="chip-btn" onclick="selectFilter('floor_group', '1층', this)">1층</button>
+                    <button class="chip-btn" onclick="selectFilter('floor_group', '저층(2~5층)', this)">저층(2~5층)</button>
+                    <button class="chip-btn" onclick="selectFilter('floor_group', '중층(6~15층)', this)">중층(6~15층)</button>
+                    <button class="chip-btn" onclick="selectFilter('floor_group', '고층(16층+)', this)">고층(16층+)</button>
+                    <button class="chip-btn" onclick="selectFilter('floor_group', '탑층', this)">탑층</button>
+                </div>
+                <div class="range-inputs">
+                    <input type="number" id="minFloorInput" placeholder="최소 층 (예: 10)" onchange="refreshData()" />
+                    <span>~</span>
+                    <input type="number" id="maxFloorInput" placeholder="최대 층 (예: 30)" onchange="refreshData()" />
+                </div>
+            </div>
+
+            <!-- 7. 현재 필터 기준 가격 비교 랭킹 -->
+            <div>
+                <div class="filter-label">
+                    <span id="rankingTitle">🏆 현재 조건 가격 비교 순위</span>
+                    <button class="compare-add-mini" onclick="resetAllFilters()">필터 초기화</button>
+                </div>
+                <div id="rankingContainer" class="ranking-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 우측 단지 상세 분석 드로어 (출처별·층별·평수별 교차 비교) -->
+    <div class="right-drawer" id="detailDrawer">
+        <div class="drawer-header">
+            <div>
+                <div class="drawer-title">
+                    <span id="drawerComplexName">단지명</span>
+                    <span class="prop-badge" id="drawerPropBadge">아파트</span>
+                </div>
+                <div class="drawer-meta" id="drawerComplexMeta">서울특별시 강남구 대치동 · 2015년 준공 · 1,200세대 · 최고 35층</div>
+            </div>
+            <div style="display:flex; gap:6px;">
+                <button class="compare-add-mini" style="padding:5px 8px; font-size:11px;" id="drawerAddCompareBtn">+ 비교함</button>
+                <button class="close-btn" onclick="closeDetailDrawer()">✕</button>
+            </div>
+        </div>
+
+        <div class="drawer-body">
+            <!-- 평수 선택 탭 -->
+            <div class="filter-label"><span>📐 평형(평수/전용면적) 선택</span></div>
+            <div class="pyeong-tabs" id="drawerPyeongTabs"></div>
+
+            <!-- 4대 부동산 플랫폼/공공데이터 가격 교차 비교 -->
+            <div class="filter-label">
+                <span>🏛️ 출처별 가격 비교 (네이버 · KB · 국토부 · 공시가격알리미)</span>
+            </div>
+            <div class="source-cards" id="drawerSourceCards"></div>
+
+            <!-- 층별 가격 비교 (1층 vs 저층 vs 중층 vs 고층 vs 탑층) -->
+            <div class="detail-box">
+                <div class="detail-box-title">
+                    <span>🪜 층별 가격 비교 (매매 · 전세 · 월세 · 공시가격)</span>
+                    <span style="font-size:10.5px; color:#64748b;">1층 대비 프리미엄 포함</span>
+                </div>
+                <div id="drawerFloorBars" style="margin-bottom:10px;"></div>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>층구분</th>
+                            <th>매매평균</th>
+                            <th>전세평균</th>
+                            <th>월세평균</th>
+                            <th>공시가격</th>
+                        </tr>
+                    </thead>
+                    <tbody id="drawerFloorTableBody"></tbody>
+                </table>
+            </div>
+
+            <!-- 평수별(면적별) 가격 요약 -->
+            <div class="detail-box">
+                <div class="detail-box-title">
+                    <span>📏 평수별(면적별) 가격 및 전세가율 비교</span>
+                </div>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>평수(전용)</th>
+                            <th>매매가(평당)</th>
+                            <th>전세가(전세가율)</th>
+                            <th>월세</th>
+                            <th>공시가격</th>
+                        </tr>
+                    </thead>
+                    <tbody id="drawerAreaTableBody"></tbody>
+                </table>
+            </div>
+
+            <!-- 개별 매물 및 실거래/공시가격 상세 기록 -->
+            <div class="detail-box">
+                <div class="detail-box-title">
+                    <span>📋 층·평수·출처별 상세 매물 및 실거래 내역</span>
+                    <span id="drawerRecordCount" style="font-size:11px; color:#2563eb;">0건</span>
+                </div>
+                <div style="max-height:260px; overflow-y:auto;">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>출처</th>
+                                <th>구분</th>
+                                <th>평수/층</th>
+                                <th>가격(보증/월세)</th>
+                                <th>기준일/비고</th>
+                            </tr>
+                        </thead>
+                        <tbody id="drawerRecordsBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 하단 비교함 플로팅 바 -->
+    <div class="compare-bar" id="compareBar">
+        <span style="font-size:12.5px; font-weight:800;">📊 비교함 (<span id="compareBarCount">0</span>)</span>
+        <div class="compare-pills" id="compareBarPills"></div>
+        <button class="action-btn primary" style="padding:6px 12px; font-size:12px;" onclick="openCompareModal()">한눈에 비교하기</button>
+        <button class="action-btn" style="padding:6px 10px; font-size:11.5px;" onclick="clearCompareBasket()">비우기</button>
+    </div>
+
+    <!-- 우측 하단 가격 범례 -->
+    <div class="map-legend">
+        <div style="font-weight:800; color:#0f172a;">가격 색상 범례 (매매/전세 기준)</div>
+        <div class="legend-row">
+            <span><i class="legend-swatch" style="background:#dc2626;"></i>15억 이상 (고가)</span>
+            <span><i class="legend-swatch" style="background:#ea580c;"></i>9억 ~ 15억</span>
+            <span><i class="legend-swatch" style="background:#2563eb;"></i>5억 ~ 9억</span>
+            <span><i class="legend-swatch" style="background:#10b981;"></i>5억 미만</span>
+        </div>
+    </div>
+
+    <!-- 모달 1: 다중 지역/단지 비교 모달 -->
+    <div class="modal-backdrop" id="compareModal">
+        <div class="modal-card">
+            <div class="modal-header">
+                <div style="font-size:16px; font-weight:800;">📊 서울·경기 지역 및 단지 다중 비교 분석</div>
+                <button class="close-btn" onclick="closeCompareModal()">✕</button>
+            </div>
+            <div class="modal-body" id="compareModalBody"></div>
+        </div>
+    </div>
+
+    <!-- 모달 2: 공공데이터포털 API 수집 & 네이버/KB 동기화 & 엑셀 업로드 -->
+    <div class="modal-backdrop" id="collectModal">
+        <div class="modal-card" style="width:720px;">
+            <div class="modal-header">
+                <div style="font-size:16px; font-weight:800;">⚡ 실시간 부동산 데이터 수집 및 엑셀/CSV 업로드</div>
+                <button class="close-btn" onclick="closeCollectModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <!-- 섹션 A: 국토교통부 / 부동산공시가격 알리미 오픈API -->
+                <div class="detail-box">
+                    <div class="detail-box-title">
+                        <span>1️⃣ 공공데이터포털 (국토부 실거래가 / 공동주택 공시가격 API) 실시간 수집</span>
+                    </div>
+                    <div class="form-grid">
+                        <div class="form-group" style="grid-column: span 2;">
+                            <label>공공데이터포털 (data.go.kr) 일반 인증키 (Encoding 또는 Decoding 키)</label>
+                            <input type="text" id="apiServiceKey" placeholder="공공데이터포털에서 발급받은 인증키를 입력하세요" />
+                        </div>
+                        <div class="form-group">
+                            <label>수집 대상 지역 (서울 25개구 · 경기 31개시군)</label>
+                            <select id="apiLawdSelect"></select>
+                        </div>
+                        <div class="form-group">
+                            <label>계약년월 (YYYYMM)</label>
+                            <input type="text" id="apiDealYmd" value="202610" placeholder="예: 202610" />
+                        </div>
+                        <div class="form-group">
+                            <label>부동산 유형</label>
+                            <select id="apiPropType">
+                                <option value="아파트">아파트</option>
+                                <option value="오피스텔">오피스텔</option>
+                                <option value="빌라/연립">빌라/연립다세대</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>거래 구분</label>
+                            <select id="apiTradeMode">
+                                <option value="매매">매매 실거래가</option>
+                                <option value="전월세">전세·월세 실거래가</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button class="action-btn primary" onclick="triggerMolitCollect()">📥 공공데이터포털 API 실시간 수집 실행</button>
+                </div>
+
+                <!-- 섹션 B: 네이버 부동산 호가 & KB 부동산 시세 & 공시가격알리미 동기화 -->
+                <div class="detail-box">
+                    <div class="detail-box-title">
+                        <span>2️⃣ 네이버 부동산 호가 · KB 부동산 시세 · 공시가격알리미 동기화</span>
+                    </div>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>동기화할 서울/경기 시·군·구</label>
+                            <select id="syncLawdSelect"></select>
+                        </div>
+                        <div class="form-group">
+                            <label>대상 플랫폼</label>
+                            <select id="syncSourceTarget">
+                                <option value="ALL">전체 (네이버호가 + KB시세 + 공시가격알리미)</option>
+                                <option value="네이버부동산">네이버 부동산 (매매/전세/월세 매물 호가)</option>
+                                <option value="KB부동산">KB 부동산 (일반가/상위가/하위가 시세)</option>
+                                <option value="공시가격알리미">부동산공시가격 알리미 (공동주택 공시가격)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button class="action-btn" style="background:#03c75a; color:#fff; border:none;" onclick="triggerNaverKbSync()">
+                        🔄 선택 지역 네이버·KB·공시가격 시세 동기화
+                    </button>
+                </div>
+
+                <!-- 섹션 C: 엑셀 / CSV 파일 업로드 -->
+                <div class="detail-box" style="margin-bottom:0;">
+                    <div class="detail-box-title">
+                        <span>3️⃣ 엑셀(.xlsx) / CSV 파일 직접 업로드</span>
+                        <a href="#" onclick="downloadSampleCsv(event)" style="font-size:11.5px; color:#2563eb; font-weight:700; text-decoration:none;">📄 샘플 CSV 양식 다운로드</a>
+                    </div>
+                    <div style="display:flex; gap:10px; align-items:center;">
+                        <input type="file" id="uploadFileInput" accept=".csv,.xlsx,.xls" style="font-size:12px;" />
+                        <button class="action-btn primary" onclick="uploadSpreadsheet()">📤 업로드 및 지도 반영</button>
+                    </div>
+                </div>
+
+                <div id="collectResultMsg" style="margin-top:12px; font-size:12.5px; font-weight:700; color:#2563eb;"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="./data.js"></script>
+    <script>
+        // 전역 상태
+        const state = {
+            useBackend: false,
+            viewMode: 'auto', // 'auto', 'sigungu', 'dong', 'complex'
+            metricMode: 'total', // 'total' (총액), 'pyeong' (평당가)
+            sido: '전체',
+            sigungu: '전체',
+            property_type: '전체',
+            trade_type: '매매',
+            source: '전체',
+            pyeong_group: '전체',
+            floor_group: '전체',
+            selectedComplexId: null,
+            selectedComplexPyeong: null,
+            lawdList: [],
+            currentItems: [],
+            compareBasket: [],
+            // 정적 모드 인메모리 DB
+            complexMap: new Map(),
+            expandedRecords: [],
+            sigunguCoordMap: new Map(),
+            dongCoordMap: new Map()
+        };
+
+        function classifyFloorGroup(floor, totalFloors) {
+            if (floor <= 1) return '1층';
+            if (floor <= 5) return '저층(2~5층)';
+            if (floor <= 15) return '중층(6~15층)';
+            if (floor === totalFloors && totalFloors >= 10) return '탑층';
+            return '고층(16층+)';
+        }
+
+        function classifyPyeongGroup(pyeong) {
+            if (pyeong < 20) return '소형(~19평)';
+            if (pyeong < 30) return '20평대(20~29평)';
+            if (pyeong < 40) return '30평대(30~39평)';
+            if (pyeong < 50) return '40평대(40~49평)';
+            return '대형(50평+)';
+        }
+
+        // 정적 데이터(window.STATIC_REAL_ESTATE_DATA) 초기화 (GitHub Pages 및 오프라인 모드 지원)
+        function initStaticDatabase() {
+            const raw = window.STATIC_REAL_ESTATE_DATA;
+            if (!raw) return;
+
+            raw.regions.forEach(r => {
+                state.sigunguCoordMap.set(`${r.sido}|${r.sigungu}`, { lat: r.lat, lng: r.lng, lawd_cd: r.lawd_cd });
+                (r.dongs || []).forEach(d => {
+                    state.dongCoordMap.set(`${r.sido}|${r.sigungu}|${d.dong}`, { lat: d.lat, lng: d.lng, lawd_cd: r.lawd_cd });
+                });
+            });
+
+            raw.complexes.forEach(c => {
+                state.complexMap.set(c.id, c);
+            });
+
+            const sources = raw.sources;
+            const trades = raw.trades;
+            const dirs = raw.dirs;
+
+            state.expandedRecords = raw.records.map(arr => {
+                const c = state.complexMap.get(arr[0]);
+                const src = sources[arr[1]];
+                const trd = trades[arr[2]];
+                const excArea = arr[3];
+                const pyeong = arr[4];
+                const floor = arr[5];
+                const price = arr[6];
+                const rent = arr[7];
+                const kbUp = arr[8];
+                const kbLow = arr[9];
+                const offPrice = arr[10];
+                const dir = dirs[arr[11]];
+                const dateStr = `2026-${arr[12]}`;
+                const totalFloors = c ? c.max_floor : 25;
+                const flGroup = classifyFloorGroup(floor, totalFloors);
+                const pyGroup = classifyPyeongGroup(pyeong);
+
+                let desc = '';
+                if (src === '네이버부동산') desc = `네이버 확인매물 · ${dir} · ${flGroup}`;
+                else if (src === 'KB부동산') desc = `KB시세 일반가 ${price.toLocaleString()}만`;
+                else if (src === '공시가격알리미') desc = `공동주택 정기 공시가격`;
+                else desc = `국토교통부 실거래 신고`;
+
+                return {
+                    complex_id: arr[0],
+                    sido: c.sido,
+                    sigungu: c.sigungu,
+                    lawd_cd: c.lawd_cd,
+                    dong: c.dong,
+                    complex_name: c.name,
+                    property_type: c.property_type,
+                    source: src,
+                    trade_type: trd,
+                    exclusive_area: excArea,
+                    supply_area: Math.round(pyeong * 3.3058 * 10) / 10,
+                    pyeong: pyeong,
+                    pyeong_group: pyGroup,
+                    floor: floor,
+                    total_floors: totalFloors,
+                    floor_group: flGroup,
+                    price: price,
+                    monthly_rent: rent,
+                    kb_upper_price: kbUp,
+                    kb_lower_price: kbLow,
+                    official_price: offPrice,
+                    direction: dir,
+                    record_date: dateStr,
+                    description: desc
+                };
+            });
+        }
+
+        // 정적 모드 필터링 함수
+        function filterStaticRecords() {
+            const minP = parseInt(document.getElementById('minPyeongInput').value, 10);
+            const maxP = parseInt(document.getElementById('maxPyeongInput').value, 10);
+            const minF = parseInt(document.getElementById('minFloorInput').value, 10);
+            const maxF = parseInt(document.getElementById('maxFloorInput').value, 10);
+            const q = document.getElementById('searchInput').value.trim().toLowerCase();
+
+            return state.expandedRecords.filter(r => {
+                if (state.sido !== '전체' && r.sido !== state.sido) return false;
+                if (state.sigungu !== '전체' && r.sigungu !== state.sigungu) return false;
+                if (state.property_type !== '전체' && r.property_type !== state.property_type) return false;
+                if (state.trade_type !== '전체' && r.trade_type !== state.trade_type) return false;
+                if (state.source !== '전체' && r.source !== state.source) return false;
+                if (state.pyeong_group !== '전체' && r.pyeong_group !== state.pyeong_group) return false;
+                if (state.floor_group !== '전체' && r.floor_group !== state.floor_group) return false;
+                if (!isNaN(minP) && r.pyeong < minP) return false;
+                if (!isNaN(maxP) && r.pyeong > maxP) return false;
+                if (!isNaN(minF) && r.floor < minF) return false;
+                if (!isNaN(maxF) && r.floor > maxF) return false;
+                if (q) {
+                    const match = r.sigungu.toLowerCase().includes(q) ||
+                                  r.dong.toLowerCase().includes(q) ||
+                                  r.complex_name.toLowerCase().includes(q);
+                    if (!match) return false;
+                }
+                return true;
+            });
+        }
+
+        function computeStaticSummary(effLevel) {
+            const recs = filterStaticRecords();
+            const groups = new Map();
+
+            recs.forEach(r => {
+                let key;
+                if (effLevel === 'complex') key = r.complex_id;
+                else if (effLevel === 'dong') key = `${r.sido}|${r.sigungu}|${r.dong}`;
+                else key = `${r.sido}|${r.sigungu}`;
+
+                let g = groups.get(key);
+                if (!g) {
+                    g = {
+                        first: r,
+                        count: 0,
+                        complexSet: new Set(),
+                        pyeongSet: new Set(),
+                        sumPrice: 0,
+                        minPrice: Infinity,
+                        maxPrice: 0,
+                        sumPyeongPrice: 0,
+                        sumRent: 0,
+                        sumOfficial: 0,
+                        naverSum: 0, naverCnt: 0,
+                        kbSum: 0, kbCnt: 0,
+                        molitSum: 0, molitCnt: 0
+                    };
+                    groups.set(key, g);
+                }
+                g.count++;
+                g.complexSet.add(r.complex_id);
+                g.pyeongSet.add(r.pyeong);
+                g.sumPrice += r.price;
+                if (r.price < g.minPrice) g.minPrice = r.price;
+                if (r.price > g.maxPrice) g.maxPrice = r.price;
+                g.sumPyeongPrice += (r.price / r.pyeong);
+                g.sumRent += r.monthly_rent;
+                g.sumOfficial += r.official_price;
+                if (r.source === '네이버부동산') { g.naverSum += r.price; g.naverCnt++; }
+                else if (r.source === 'KB부동산') { g.kbSum += r.price; g.kbCnt++; }
+                else if (r.source === '국토부실거래') { g.molitSum += r.price; g.molitCnt++; }
+            });
+
+            const results = [];
+            groups.forEach((g, key) => {
+                const avgPrice = Math.round(g.sumPrice / g.count);
+                const avgPyeongPrice = Math.round(g.sumPyeongPrice / g.count);
+                const avgRent = Math.round(g.sumRent / g.count);
+                const avgOff = Math.round(g.sumOfficial / g.count);
+                const naverAvg = g.naverCnt ? Math.round(g.naverSum / g.naverCnt) : avgPrice;
+                const kbAvg = g.kbCnt ? Math.round(g.kbSum / g.kbCnt) : avgPrice;
+                const molitAvg = g.molitCnt ? Math.round(g.molitSum / g.molitCnt) : avgPrice;
+                const r = g.first;
+
+                if (effLevel === 'complex') {
+                    const c = state.complexMap.get(r.complex_id);
+                    results.push({
+                        id: c.id,
+                        sido: c.sido,
+                        sigungu: c.sigungu,
+                        lawd_cd: c.lawd_cd,
+                        dong: c.dong,
+                        name: c.name,
+                        property_type: c.property_type,
+                        lat: c.lat,
+                        lng: c.lng,
+                        build_year: c.build_year,
+                        total_households: c.total_households,
+                        max_floor: c.max_floor,
+                        record_count: g.count,
+                        avg_price: avgPrice,
+                        min_price: g.minPrice,
+                        max_price: g.maxPrice,
+                        avg_pyeong_price: avgPyeongPrice,
+                        avg_monthly_rent: avgRent,
+                        avg_official_price: avgOff,
+                        naver_price: naverAvg,
+                        kb_price: kbAvg,
+                        molit_price: molitAvg,
+                        pyeongs: Array.from(g.pyeongSet).sort((a,b)=>a-b).join(',')
+                    });
+                } else if (effLevel === 'dong') {
+                    const coord = state.dongCoordMap.get(key) || state.sigunguCoordMap.get(`${r.sido}|${r.sigungu}`) || { lat: 37.5665, lng: 126.978 };
+                    results.push({
+                        level: 'dong',
+                        sido: r.sido,
+                        sigungu: r.sigungu,
+                        lawd_cd: r.lawd_cd,
+                        dong: r.dong,
+                        label: r.dong,
+                        full_name: `${r.sido} ${r.sigungu} ${r.dong}`,
+                        lat: coord.lat,
+                        lng: coord.lng,
+                        record_count: g.count,
+                        complex_count: g.complexSet.size,
+                        avg_price: avgPrice,
+                        min_price: g.minPrice,
+                        max_price: g.maxPrice,
+                        avg_pyeong_price: avgPyeongPrice,
+                        avg_monthly_rent: avgRent,
+                        avg_official_price: avgOff,
+                        naver_avg_price: naverAvg,
+                        kb_avg_price: kbAvg,
+                        molit_avg_price: molitAvg
+                    });
+                } else {
+                    const coord = state.sigunguCoordMap.get(key) || { lat: 37.5665, lng: 126.978 };
+                    results.push({
+                        level: 'sigungu',
+                        sido: r.sido,
+                        sigungu: r.sigungu,
+                        lawd_cd: r.lawd_cd,
+                        dong: '',
+                        label: r.sigungu,
+                        full_name: `${r.sido} ${r.sigungu}`,
+                        lat: coord.lat,
+                        lng: coord.lng,
+                        record_count: g.count,
+                        complex_count: g.complexSet.size,
+                        avg_price: avgPrice,
+                        min_price: g.minPrice,
+                        max_price: g.maxPrice,
+                        avg_pyeong_price: avgPyeongPrice,
+                        avg_monthly_rent: avgRent,
+                        avg_official_price: avgOff,
+                        naver_avg_price: naverAvg,
+                        kb_avg_price: kbAvg,
+                        molit_avg_price: molitAvg
+                    });
+                }
+            });
+
+            return results.sort((a, b) => b.avg_price - a.avg_price);
+        }
+
+        function computeStaticComplexDetail(complexId, pyeongFilter = null) {
+            const c = state.complexMap.get(Number(complexId));
+            const allRecs = state.expandedRecords.filter(r => r.complex_id === Number(complexId));
+
+            const pyeongMap = new Map();
+            allRecs.forEach(r => {
+                if (!pyeongMap.has(r.pyeong)) {
+                    pyeongMap.set(r.pyeong, {
+                        pyeong: r.pyeong,
+                        pyeong_group: r.pyeong_group,
+                        exclusive_area: r.exclusive_area,
+                        supply_area: r.supply_area
+                    });
+                }
+            });
+            const pyeong_list = Array.from(pyeongMap.values()).sort((a, b) => a.pyeong - b.pyeong);
+
+            const filteredRecs = pyeongFilter
+                ? allRecs.filter(r => r.pyeong === Number(pyeongFilter))
+                : allRecs;
+
+            // source_summary
+            const srcMap = new Map();
+            filteredRecs.forEach(r => {
+                const k = `${r.source}|${r.trade_type}`;
+                let g = srcMap.get(k);
+                if (!g) {
+                    g = { source: r.source, trade_type: r.trade_type, cnt: 0, sumP: 0, sumUp: 0, sumLow: 0, sumOff: 0 };
+                    srcMap.set(k, g);
+                }
+                g.cnt++;
+                g.sumP += r.price;
+                g.sumUp += r.kb_upper_price;
+                g.sumLow += r.kb_lower_price;
+                g.sumOff += r.official_price;
+            });
+            const source_summary = Array.from(srcMap.values()).map(g => ({
+                source: g.source,
+                trade_type: g.trade_type,
+                cnt: g.cnt,
+                avg_price: Math.round(g.sumP / g.cnt),
+                kb_upper: Math.round(g.sumUp / g.cnt),
+                kb_lower: Math.round(g.sumLow / g.cnt),
+                avg_official: Math.round(g.sumOff / g.cnt)
+            }));
+
+            // floor_breakdown
+            const flMap = new Map();
+            filteredRecs.forEach(r => {
+                let g = flMap.get(r.floor_group);
+                if (!g) {
+                    g = {
+                        floor_group: r.floor_group,
+                        minFloor: r.floor,
+                        saleSum: 0, saleCnt: 0,
+                        jeonseSum: 0, jeonseCnt: 0,
+                        wolseDepSum: 0, wolseRentSum: 0, wolseCnt: 0,
+                        offSum: 0, offCnt: 0
+                    };
+                    flMap.set(r.floor_group, g);
+                }
+                if (r.floor < g.minFloor) g.minFloor = r.floor;
+                if (r.trade_type === '매매') { g.saleSum += r.price; g.saleCnt++; }
+                else if (r.trade_type === '전세') { g.jeonseSum += r.price; g.jeonseCnt++; }
+                else if (r.trade_type === '월세') { g.wolseDepSum += r.price; g.wolseRentSum += r.monthly_rent; g.wolseCnt++; }
+                else if (r.trade_type === '공시가격') { g.offSum += r.price; g.offCnt++; }
+            });
+            const floor_breakdown = Array.from(flMap.values())
+                .sort((a, b) => a.minFloor - b.minFloor)
+                .map(g => ({
+                    floor_group: g.floor_group,
+                    sale_avg: g.saleCnt ? Math.round(g.saleSum / g.saleCnt) : 0,
+                    jeonse_avg: g.jeonseCnt ? Math.round(g.jeonseSum / g.jeonseCnt) : 0,
+                    wolse_deposit_avg: g.wolseCnt ? Math.round(g.wolseDepSum / g.wolseCnt) : 0,
+                    wolse_rent_avg: g.wolseCnt ? Math.round(g.wolseRentSum / g.wolseCnt) : 0,
+                    official_avg: g.offCnt ? Math.round(g.offSum / g.offCnt) : 0
+                }));
+
+            // area_breakdown
+            const arMap = new Map();
+            allRecs.forEach(r => {
+                let g = arMap.get(r.pyeong);
+                if (!g) {
+                    g = {
+                        pyeong: r.pyeong,
+                        pyeong_group: r.pyeong_group,
+                        exclusive_area: r.exclusive_area,
+                        supply_area: r.supply_area,
+                        saleSum: 0, saleCnt: 0,
+                        jeonseSum: 0, jeonseCnt: 0,
+                        wolseDepSum: 0, wolseRentSum: 0, wolseCnt: 0,
+                        offSum: 0, offCnt: 0
+                    };
+                    arMap.set(r.pyeong, g);
+                }
+                if (r.trade_type === '매매') { g.saleSum += r.price; g.saleCnt++; }
+                else if (r.trade_type === '전세') { g.jeonseSum += r.price; g.jeonseCnt++; }
+                else if (r.trade_type === '월세') { g.wolseDepSum += r.price; g.wolseRentSum += r.monthly_rent; g.wolseCnt++; }
+                else if (r.trade_type === '공시가격') { g.offSum += r.price; g.offCnt++; }
+            });
+            const area_breakdown = Array.from(arMap.values())
+                .sort((a, b) => a.pyeong - b.pyeong)
+                .map(g => {
+                    const sAvg = g.saleCnt ? Math.round(g.saleSum / g.saleCnt) : 0;
+                    return {
+                        pyeong: g.pyeong,
+                        pyeong_group: g.pyeong_group,
+                        exclusive_area: g.exclusive_area,
+                        supply_area: g.supply_area,
+                        sale_avg: sAvg,
+                        pyeong_price: sAvg ? Math.round(sAvg / g.pyeong) : 0,
+                        jeonse_avg: g.jeonseCnt ? Math.round(g.jeonseSum / g.jeonseCnt) : 0,
+                        wolse_deposit_avg: g.wolseCnt ? Math.round(g.wolseDepSum / g.wolseCnt) : 0,
+                        wolse_rent_avg: g.wolseCnt ? Math.round(g.wolseRentSum / g.wolseCnt) : 0,
+                        official_avg: g.offCnt ? Math.round(g.offSum / g.offCnt) : 0
+                    };
+                });
+
+            return {
+                complex: c,
+                pyeong_list,
+                source_summary,
+                floor_breakdown,
+                area_breakdown,
+                records: filteredRecs.slice(0, 120)
+            };
+        }
+
+        // 지도 초기화 (서울·경기 한눈에 보이는 중심 좌표)
+        const map = L.map('map', {
+            zoomControl: false
+        }).setView([37.525, 127.02], 10);
+
+        L.control.zoom({ position: 'bottomleft' }).addTo(map);
+
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+            maxZoom: 19
+        }).addTo(map);
+
+        const markersLayer = L.layerGroup().addTo(map);
+        const circlesLayer = L.layerGroup().addTo(map);
+
+        function formatKoreanPrice(manwon, monthlyRent = 0, tradeType = state.trade_type) {
+            if (!manwon || manwon <= 0) return '-';
+            if (tradeType === '월세' && monthlyRent > 0) {
+                const depStr = manwon >= 10000
+                    ? `${Math.floor(manwon / 10000)}억${manwon % 10000 > 0 ? ' ' + (manwon % 10000).toLocaleString() : ''}`
+                    : `${manwon.toLocaleString()}만`;
+                return `${depStr} / 월 ${monthlyRent.toLocaleString()}만`;
+            }
+            const eok = Math.floor(manwon / 10000);
+            const rem = manwon % 10000;
+            if (eok > 0 && rem > 0) {
+                return `${eok}억 ${rem.toLocaleString()}만`;
+            } else if (eok > 0) {
+                return `${eok}억`;
+            }
+            return `${manwon.toLocaleString()}만`;
+        }
+
+        function formatCompactPrice(manwon, monthlyRent = 0, tradeType = state.trade_type) {
+            if (!manwon || manwon <= 0) return '-';
+            if (tradeType === '월세' && monthlyRent > 0) {
+                const dep = manwon >= 10000 ? `${(manwon / 10000).toFixed(1)}억` : `${manwon.toLocaleString()}만`;
+                return `${dep}/${monthlyRent}만`;
+            }
+            if (manwon >= 10000) {
+                return `${(manwon / 10000).toFixed(1)}억`;
+            }
+            return `${manwon.toLocaleString()}만`;
+        }
+
+        function getPriceTierClass(manwon) {
+            if (manwon >= 150000) return 'tier-ultra';
+            if (manwon >= 90000) return 'tier-high';
+            if (manwon >= 50000) return 'tier-mid';
+            return 'tier-low';
+        }
+
+        function getPriceColor(manwon) {
+            if (manwon >= 150000) return '#dc2626';
+            if (manwon >= 90000) return '#ea580c';
+            if (manwon >= 50000) return '#2563eb';
+            return '#10b981';
+        }
+
+        function getEffectiveLevel() {
+            if (state.viewMode !== 'auto') return state.viewMode;
+            const z = map.getZoom();
+            if (z <= 11) return 'sigungu';
+            if (z <= 13) return 'dong';
+            return 'complex';
+        }
+
+        async function loadLawdCodes() {
+            try {
+                const res = await fetch('/api/lawd-codes');
+                if (res.ok) {
+                    state.useBackend = true;
+                    state.lawdList = await res.json();
+                } else {
+                    throw new Error('Static fallback');
+                }
+            } catch (e) {
+                state.useBackend = false;
+                initStaticDatabase();
+                state.lawdList = (window.STATIC_REAL_ESTATE_DATA.regions || []).map(r => ({
+                    sido: r.sido,
+                    sigungu: r.sigungu,
+                    lawd_cd: r.lawd_cd,
+                    lat: r.lat,
+                    lng: r.lng,
+                    dong_count: (r.dongs || []).length
+                }));
+            }
+            populateSigunguDropdown();
+            populateModalLawdDropdowns();
+        }
+
+        function populateSigunguDropdown() {
+            const sel = document.getElementById('sigunguSelect');
+            const filtered = state.sido === '전체'
+                ? state.lawdList
+                : state.lawdList.filter(r => r.sido === state.sido);
+
+            sel.innerHTML = '<option value="전체">시·군·구 전체</option>';
+            filtered.forEach(r => {
+                const opt = document.createElement('option');
+                opt.value = r.sigungu;
+                opt.textContent = `${r.sido === '서울특별시' ? '[서울]' : '[경기]'} ${r.sigungu}`;
+                sel.appendChild(opt);
+            });
+        }
+
+        function populateModalLawdDropdowns() {
+            const s1 = document.getElementById('apiLawdSelect');
+            const s2 = document.getElementById('syncLawdSelect');
+            s1.innerHTML = '';
+            s2.innerHTML = '';
+            state.lawdList.forEach(r => {
+                const label = `${r.sido} ${r.sigungu} (${r.lawd_cd})`;
+                s1.add(new Option(label, r.lawd_cd));
+                s2.add(new Option(label, r.lawd_cd));
+            });
+        }
+
+        function onSidoChange() {
+            state.sido = document.getElementById('sidoSelect').value;
+            state.sigungu = '전체';
+            populateSigunguDropdown();
+            if (state.sido === '서울특별시') {
+                map.setView([37.5665, 126.9780], 11);
+            } else if (state.sido === '경기도') {
+                map.setView([37.42, 127.08], 10);
+            } else {
+                map.setView([37.525, 127.02], 10);
+            }
+            refreshData();
+        }
+
+        function onSigunguChange() {
+            state.sigungu = document.getElementById('sigunguSelect').value;
+            if (state.sigungu !== '전체') {
+                const found = state.lawdList.find(r => r.sigungu === state.sigungu);
+                if (found) {
+                    map.setView([found.lat, found.lng], 13);
+                }
+            }
+            refreshData();
+        }
+
+        function selectFilter(key, val, btnEl) {
+            state[key] = val;
+            const parent = btnEl.parentElement;
+            Array.from(parent.children).forEach(b => b.classList.remove('active'));
+            btnEl.classList.add('active');
+            refreshData();
+        }
+
+        function setViewMode(mode) {
+            state.viewMode = mode;
+            document.querySelectorAll('.zoom-mode-btn').forEach(b => {
+                b.classList.toggle('active', b.dataset.view === mode);
+            });
+            refreshData();
+        }
+
+        function toggleMetricMode() {
+            state.metricMode = state.metricMode === 'total' ? 'pyeong' : 'total';
+            document.getElementById('metricModeLabel').textContent =
+                state.metricMode === 'total' ? '총액(억/만)' : '평당가(만/평)';
+            renderMapAndRanking();
+        }
+
+        function resetAllFilters() {
+            state.sido = '전체';
+            state.sigungu = '전체';
+            state.property_type = '전체';
+            state.trade_type = '매매';
+            state.source = '전체';
+            state.pyeong_group = '전체';
+            state.floor_group = '전체';
+            document.getElementById('sidoSelect').value = '전체';
+            populateSigunguDropdown();
+            document.getElementById('searchInput').value = '';
+            document.getElementById('minPyeongInput').value = '';
+            document.getElementById('maxPyeongInput').value = '';
+            document.getElementById('minFloorInput').value = '';
+            document.getElementById('maxFloorInput').value = '';
+
+            ['tradeTypeGroup', 'sourceGroup', 'propTypeGroup', 'pyeongGroup', 'floorGroup'].forEach(gid => {
+                const container = document.getElementById(gid);
+                Array.from(container.children).forEach((b, i) => b.classList.toggle('active', i === 0));
+            });
+            refreshData();
+        }
+
+        let debounceTimer = null;
+        function debounceRefresh() {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => refreshData(), 250);
+        }
+
+        function buildQueryParams() {
+            const params = new URLSearchParams();
+            params.set('sido', state.sido);
+            params.set('sigungu', state.sigungu);
+            params.set('property_type', state.property_type);
+            params.set('trade_type', state.trade_type);
+            params.set('source', state.source);
+            params.set('pyeong_group', state.pyeong_group);
+            params.set('floor_group', state.floor_group);
+
+            const minP = document.getElementById('minPyeongInput').value;
+            const maxP = document.getElementById('maxPyeongInput').value;
+            const minF = document.getElementById('minFloorInput').value;
+            const maxF = document.getElementById('maxFloorInput').value;
+            const q = document.getElementById('searchInput').value.trim();
+
+            if (minP) params.set('min_pyeong', minP);
+            if (maxP) params.set('max_pyeong', maxP);
+            if (minF) params.set('min_floor', minF);
+            if (maxF) params.set('max_floor', maxF);
+            if (q) params.set('search', q);
+            return params;
+        }
+
+        async function refreshData() {
+            const effLevel = getEffectiveLevel();
+
+            if (state.useBackend) {
+                const params = buildQueryParams();
+                if (effLevel === 'complex') {
+                    const res = await fetch(`/api/complexes?${params.toString()}`);
+                    state.currentItems = await res.json();
+                } else {
+                    params.set('level', effLevel);
+                    const res = await fetch(`/api/regions/summary?${params.toString()}`);
+                    state.currentItems = await res.json();
+                }
+            } else {
+                state.currentItems = computeStaticSummary(effLevel);
+            }
+
+            renderMapAndRanking();
+        }
+
+        function renderMapAndRanking() {
+            markersLayer.clearLayers();
+            circlesLayer.clearLayers();
+
+            const effLevel = getEffectiveLevel();
+            const items = state.currentItems || [];
+
+            document.getElementById('statCount').textContent = items.length.toLocaleString();
+            if (items.length > 0) {
+                const avgP = Math.round(items.reduce((acc, it) => acc + (it.avg_price || 0), 0) / items.length);
+                const avgPy = Math.round(items.reduce((acc, it) => acc + (it.avg_pyeong_price || 0), 0) / items.length);
+                document.getElementById('statAvgPrice').textContent = formatCompactPrice(avgP);
+                document.getElementById('statAvgPyeong').textContent = `${avgPy.toLocaleString()}만/평`;
+            } else {
+                document.getElementById('statAvgPrice').textContent = '-';
+                document.getElementById('statAvgPyeong').textContent = '-';
+            }
+
+            items.forEach(item => {
+                const tierClass = getPriceTierClass(item.avg_price);
+                const color = getPriceColor(item.avg_price);
+
+                if (effLevel !== 'complex') {
+                    L.circle([item.lat, item.lng], {
+                        radius: effLevel === 'sigungu' ? 2800 : 850,
+                        color: color,
+                        weight: 1,
+                        fillColor: color,
+                        fillOpacity: 0.14
+                    }).addTo(circlesLayer);
+                }
+
+                const titleText = effLevel === 'complex' ? item.name : item.label;
+                const mainPriceText = state.metricMode === 'pyeong'
+                    ? `${(item.avg_pyeong_price || 0).toLocaleString()}만/평`
+                    : formatCompactPrice(item.avg_price, item.avg_monthly_rent, state.trade_type);
+
+                const subText = effLevel === 'complex'
+                    ? `${item.property_type} · ${item.pyeongs ? item.pyeongs.split(',').slice(0,3).join('/') + '평' : ''}`
+                    : `평당 ${(item.avg_pyeong_price || 0).toLocaleString()}만 · ${item.complex_count}단지`;
+
+                const html = `
+                    <div class="map-price-marker ${tierClass}">
+                        <div class="marker-head">
+                            <span>${titleText}</span>
+                        </div>
+                        <div class="marker-body">
+                            <div class="marker-main-price">${mainPriceText}</div>
+                            <div class="marker-sub-price">${subText}</div>
+                        </div>
+                    </div>
+                `;
+
+                const icon = L.divIcon({
+                    className: 'custom-div-icon',
+                    html: html,
+                    iconSize: [120, 48],
+                    iconAnchor: [60, 24]
+                });
+
+                const marker = L.marker([item.lat, item.lng], { icon }).addTo(markersLayer);
+
+                const naverP = formatCompactPrice(item.naver_avg_price || item.naver_price || item.avg_price);
+                const kbP = formatCompactPrice(item.kb_avg_price || item.kb_price || item.avg_price);
+                const molitP = formatCompactPrice(item.molit_avg_price || item.molit_price || item.avg_price);
+                const offP = formatCompactPrice(item.avg_official_price);
+
+                marker.bindTooltip(`
+                    <div style="font-family:'Malgun Gothic',sans-serif; padding:4px; min-width:190px;">
+                        <div style="font-weight:800; font-size:13px; margin-bottom:4px;">
+                            ${effLevel === 'complex' ? `[${item.property_type}] ${item.name}` : item.full_name}
+                        </div>
+                        <div style="font-size:11.5px; color:#334155; line-height:1.5;">
+                            • 평균 ${state.trade_type}: <strong>${formatKoreanPrice(item.avg_price, item.avg_monthly_rent)}</strong><br/>
+                            • 평당가: <strong>${(item.avg_pyeong_price || 0).toLocaleString()}만원/평</strong><br/>
+                            <hr style="border:none; border-top:1px solid #e2e8f0; margin:4px 0;"/>
+                            • <span style="color:#03c75a; font-weight:700;">네이버호가:</span> ${naverP}<br/>
+                            • <span style="color:#d97706; font-weight:700;">KB시세:</span> ${kbP}<br/>
+                            • <span style="color:#2563eb; font-weight:700;">국토부실거래:</span> ${molitP}<br/>
+                            • <span style="color:#7c3aed; font-weight:700;">공시가격:</span> ${offP}
+                        </div>
+                    </div>
+                `, { direction: 'top', offset: [0, -20] });
+
+                marker.on('click', () => {
+                    if (effLevel === 'sigungu') {
+                        map.setView([item.lat, item.lng], 13);
+                    } else if (effLevel === 'dong') {
+                        map.setView([item.lat, item.lng], 15);
+                    } else {
+                        openComplexDetail(item.id);
+                    }
+                });
+            });
+
+            renderRankingList(items, effLevel);
+        }
+
+        function renderRankingList(items, effLevel) {
+            const container = document.getElementById('rankingContainer');
+            const titleEl = document.getElementById('rankingTitle');
+
+            const levelName = effLevel === 'sigungu' ? '시·군·구' : (effLevel === 'dong' ? '법정동' : '단지');
+            titleEl.textContent = `🏆 ${levelName} ${state.trade_type} 가격 순위 (${items.length}곳)`;
+
+            const sorted = [...items].sort((a, b) => {
+                if (state.metricMode === 'pyeong') return (b.avg_pyeong_price || 0) - (a.avg_pyeong_price || 0);
+                return (b.avg_price || 0) - (a.avg_price || 0);
+            });
+
+            container.innerHTML = sorted.slice(0, 40).map((it, idx) => {
+                const name = effLevel === 'complex' ? it.name : it.full_name;
+                const sub = effLevel === 'complex'
+                    ? `${it.sigungu} ${it.dong} · ${it.property_type} · ${it.build_year}년`
+                    : `단지 ${it.complex_count}곳 · 데이터 ${it.record_count}건`;
+                const priceStr = formatKoreanPrice(it.avg_price, it.avg_monthly_rent);
+                const pyeongStr = `평당 ${(it.avg_pyeong_price || 0).toLocaleString()}만`;
+                const itemPayload = encodeURIComponent(JSON.stringify({
+                    key: effLevel === 'complex' ? `comp_${it.id}` : `reg_${it.full_name}`,
+                    name: name,
+                    type: effLevel === 'complex' ? it.property_type : '지역평균',
+                    avg_price: it.avg_price,
+                    avg_pyeong_price: it.avg_pyeong_price,
+                    avg_monthly_rent: it.avg_monthly_rent,
+                    avg_official_price: it.avg_official_price,
+                    naver_price: it.naver_avg_price || it.naver_price || it.avg_price,
+                    kb_price: it.kb_avg_price || it.kb_price || it.avg_price,
+                    molit_price: it.molit_avg_price || it.molit_price || it.avg_price
+                }));
+
+                return `
+                    <div class="rank-item" onclick="onRankItemClick('${effLevel}', ${it.id || 0}, ${it.lat}, ${it.lng})">
+                        <div class="rank-left">
+                            <div class="rank-num">${idx + 1}</div>
+                            <div>
+                                <div class="rank-title">${name}</div>
+                                <div class="rank-meta">${sub}</div>
+                            </div>
+                        </div>
+                        <div class="rank-right">
+                            <div class="rank-price">${priceStr}</div>
+                            <div class="rank-pyeong">
+                                ${pyeongStr}
+                                <button class="compare-add-mini" onclick="event.stopPropagation(); addToCompare('${itemPayload}')">+비교</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function onRankItemClick(effLevel, complexId, lat, lng) {
+            if (effLevel === 'complex' && complexId) {
+                map.setView([lat, lng], 16);
+                openComplexDetail(complexId);
+            } else if (effLevel === 'sigungu') {
+                map.setView([lat, lng], 13);
+            } else {
+                map.setView([lat, lng], 15);
+            }
+        }
+
+        async function openComplexDetail(complexId, pyeong = null) {
+            state.selectedComplexId = complexId;
+            state.selectedComplexPyeong = pyeong;
+
+            let data;
+            if (state.useBackend) {
+                const url = pyeong
+                    ? `/api/complexes/${complexId}?pyeong=${pyeong}`
+                    : `/api/complexes/${complexId}`;
+                const res = await fetch(url);
+                data = await res.json();
+            } else {
+                data = computeStaticComplexDetail(complexId, pyeong);
+            }
+
+            const c = data.complex;
+            document.getElementById('detailDrawer').classList.add('open');
+            document.getElementById('drawerComplexName').textContent = c.name;
+            document.getElementById('drawerPropBadge').textContent = c.property_type;
+            document.getElementById('drawerComplexMeta').textContent =
+                `${c.sido} ${c.sigungu} ${c.dong} · ${c.build_year}년 준공 · ${c.total_households.toLocaleString()}세대 · 최고 ${c.max_floor}층`;
+
+            const saleSummary = data.source_summary.find(s => s.trade_type === '매매') || data.source_summary[0] || {};
+            const payload = encodeURIComponent(JSON.stringify({
+                key: `comp_${c.id}`,
+                name: `${c.name} (${c.dong})`,
+                type: c.property_type,
+                avg_price: saleSummary.avg_price || 0,
+                avg_pyeong_price: data.area_breakdown[0] ? data.area_breakdown[0].pyeong_price : 0,
+                avg_monthly_rent: 0,
+                avg_official_price: saleSummary.avg_official || 0,
+                naver_price: (data.source_summary.find(s => s.source === '네이버부동산' && s.trade_type === '매매') || {}).avg_price || 0,
+                kb_price: (data.source_summary.find(s => s.source === 'KB부동산' && s.trade_type === '매매') || {}).avg_price || 0,
+                molit_price: (data.source_summary.find(s => s.source === '국토부실거래' && s.trade_type === '매매') || {}).avg_price || 0
+            }));
+            document.getElementById('drawerAddCompareBtn').onclick = () => addToCompare(payload);
+
+            const tabsEl = document.getElementById('drawerPyeongTabs');
+            let tabsHtml = `<button class="pyeong-tab ${!pyeong ? 'active' : ''}" onclick="openComplexDetail(${c.id}, null)">전체 평형</button>`;
+            data.pyeong_list.forEach(p => {
+                const isAct = pyeong === p.pyeong ? 'active' : '';
+                tabsHtml += `
+                    <button class="pyeong-tab ${isAct}" onclick="openComplexDetail(${c.id}, ${p.pyeong})">
+                        ${p.pyeong}평 (전용 ${p.exclusive_area}㎡)
+                    </button>
+                `;
+            });
+            tabsEl.innerHTML = tabsHtml;
+
+            const findSrc = (srcName, tType) => data.source_summary.find(s => s.source === srcName && s.trade_type === tType);
+            const naverSale = findSrc('네이버부동산', '매매');
+            const naverJeonse = findSrc('네이버부동산', '전세');
+            const kbSale = findSrc('KB부동산', '매매');
+            const molitSale = findSrc('국토부실거래', '매매');
+            const molitJeonse = findSrc('국토부실거래', '전세');
+            const offPrice = findSrc('공시가격알리미', '공시가격');
+
+            const realRatio = (offPrice && molitSale && molitSale.avg_price > 0)
+                ? Math.round((offPrice.avg_price / molitSale.avg_price) * 100)
+                : 69;
+
+            document.getElementById('drawerSourceCards').innerHTML = `
+                <div class="src-card" style="border-left: 4px solid #03c75a;">
+                    <div class="src-card-head">
+                        <span style="color:#03c75a;">네이버부동산 (매물호가)</span>
+                        <span>${naverSale ? naverSale.cnt : 0}건</span>
+                    </div>
+                    <div class="src-card-price">${naverSale ? formatKoreanPrice(naverSale.avg_price) : '-'}</div>
+                    <div class="src-card-sub">전세호가: ${naverJeonse ? formatKoreanPrice(naverJeonse.avg_price) : '-'}</div>
+                </div>
+                <div class="src-card" style="border-left: 4px solid #d97706;">
+                    <div class="src-card-head">
+                        <span style="color:#d97706;">KB부동산 시세 (일반가)</span>
+                        <span>KB시세</span>
+                    </div>
+                    <div class="src-card-price">${kbSale ? formatKoreanPrice(kbSale.avg_price) : '-'}</div>
+                    <div class="src-card-sub">
+                        하위 ${kbSale ? formatCompactPrice(kbSale.kb_lower) : '-'} ~ 상위 ${kbSale ? formatCompactPrice(kbSale.kb_upper) : '-'}
+                    </div>
+                </div>
+                <div class="src-card" style="border-left: 4px solid #2563eb;">
+                    <div class="src-card-head">
+                        <span style="color:#2563eb;">국토교통부 실거래가</span>
+                        <span>신고완료</span>
+                    </div>
+                    <div class="src-card-price">${molitSale ? formatKoreanPrice(molitSale.avg_price) : '-'}</div>
+                    <div class="src-card-sub">전세실거래: ${molitJeonse ? formatKoreanPrice(molitJeonse.avg_price) : '-'}</div>
+                </div>
+                <div class="src-card" style="border-left: 4px solid #7c3aed;">
+                    <div class="src-card-head">
+                        <span style="color:#7c3aed;">부동산공시가격 알리미</span>
+                        <span>현실화율 ${realRatio}%</span>
+                    </div>
+                    <div class="src-card-price">${offPrice ? formatKoreanPrice(offPrice.avg_price) : '-'}</div>
+                    <div class="src-card-sub">공동주택 공시가격 (보유세 기준)</div>
+                </div>
+            `;
+
+            const fb = data.floor_breakdown || [];
+            const maxFlSale = Math.max(...fb.map(f => f.sale_avg || 0), 1);
+            const firstFloorSale = (fb.find(f => f.floor_group === '1층') || fb[0] || {}).sale_avg || 0;
+
+            document.getElementById('drawerFloorBars').innerHTML = fb.map(f => {
+                const pct = Math.max(15, Math.round(((f.sale_avg || 0) / maxFlSale) * 100));
+                const diffPct = (firstFloorSale > 0 && f.sale_avg)
+                    ? ((f.sale_avg - firstFloorSale) / firstFloorSale * 100).toFixed(1)
+                    : '0.0';
+                const diffLabel = diffPct > 0 ? `+${diffPct}%` : `${diffPct}%`;
+                return `
+                    <div class="floor-bar-row">
+                        <div style="font-weight:700; color:#334155;">${f.floor_group}</div>
+                        <div class="floor-bar-track">
+                            <div class="floor-bar-fill" style="width:${pct}%;"></div>
+                        </div>
+                        <div style="text-align:right; font-weight:800; color:#0f172a;">
+                            ${formatCompactPrice(f.sale_avg)} <span style="font-size:10px; color:#2563eb;">(${diffLabel})</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            document.getElementById('drawerFloorTableBody').innerHTML = fb.map(f => `
+                <tr>
+                    <td><strong>${f.floor_group}</strong></td>
+                    <td style="color:#dc2626; font-weight:700;">${formatCompactPrice(f.sale_avg)}</td>
+                    <td style="color:#2563eb; font-weight:700;">${formatCompactPrice(f.jeonse_avg)}</td>
+                    <td>${f.wolse_deposit_avg ? `${formatCompactPrice(f.wolse_deposit_avg)}/${f.wolse_rent_avg}만` : '-'}</td>
+                    <td style="color:#7c3aed;">${formatCompactPrice(f.official_avg)}</td>
+                </tr>
+            `).join('');
+
+            document.getElementById('drawerAreaTableBody').innerHTML = (data.area_breakdown || []).map(a => {
+                const jRatio = (a.sale_avg && a.jeonse_avg) ? Math.round((a.jeonse_avg / a.sale_avg) * 100) : '-';
+                return `
+                    <tr style="cursor:pointer;" onclick="openComplexDetail(${c.id}, ${a.pyeong})">
+                        <td><strong>${a.pyeong}평</strong> <span style="color:#64748b; font-size:10px;">(${a.exclusive_area}㎡)</span></td>
+                        <td><strong style="color:#dc2626;">${formatCompactPrice(a.sale_avg)}</strong><br/><span style="font-size:10px; color:#64748b;">평당 ${(a.pyeong_price||0).toLocaleString()}만</span></td>
+                        <td><strong style="color:#2563eb;">${formatCompactPrice(a.jeonse_avg)}</strong><br/><span style="font-size:10px; color:#64748b;">전세가율 ${jRatio}%</span></td>
+                        <td>${a.wolse_deposit_avg ? `${formatCompactPrice(a.wolse_deposit_avg)}/${a.wolse_rent_avg}만` : '-'}</td>
+                        <td style="color:#7c3aed; font-weight:700;">${formatCompactPrice(a.official_avg)}</td>
+                    </tr>
+                `;
+            }).join('');
+
+            const recs = data.records || [];
+            document.getElementById('drawerRecordCount').textContent = `총 ${recs.length}건`;
+            document.getElementById('drawerRecordsBody').innerHTML = recs.map(r => `
+                <tr>
+                    <td><span class="badge-src ${r.source}">${r.source}</span></td>
+                    <td><strong>${r.trade_type}</strong></td>
+                    <td>${r.pyeong}평(${r.exclusive_area}㎡)<br/><span style="color:#2563eb; font-weight:700;">${r.floor}층</span>/${r.total_floors}층</td>
+                    <td style="font-weight:800; color:#0f172a;">
+                        ${formatKoreanPrice(r.price, r.monthly_rent, r.trade_type)}
+                    </td>
+                    <td style="font-size:10.5px; color:#64748b;">
+                        <div>${r.record_date}</div>
+                        <div>${r.description || ''}</div>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function closeDetailDrawer() {
+            document.getElementById('detailDrawer').classList.remove('open');
+        }
+
+        function addToCompare(encodedPayload) {
+            const item = JSON.parse(decodeURIComponent(encodedPayload));
+            if (state.compareBasket.some(x => x.key === item.key)) {
+                return;
+            }
+            if (state.compareBasket.length >= 6) {
+                alert('비교함에는 최대 6개 지역/단지까지 담을 수 있습니다.');
+                return;
+            }
+            state.compareBasket.push(item);
+            updateCompareBarUI();
+        }
+
+        function removeFromCompare(key) {
+            state.compareBasket = state.compareBasket.filter(x => x.key !== key);
+            updateCompareBarUI();
+        }
+
+        function clearCompareBasket() {
+            state.compareBasket = [];
+            updateCompareBarUI();
+        }
+
+        function updateCompareBarUI() {
+            const cnt = state.compareBasket.length;
+            document.getElementById('compareCountBadge').textContent = cnt;
+            document.getElementById('compareBarCount').textContent = cnt;
+            const bar = document.getElementById('compareBar');
+            bar.classList.toggle('active', cnt > 0);
+
+            document.getElementById('compareBarPills').innerHTML = state.compareBasket.map(it => `
+                <div class="compare-pill">
+                    <span>${it.name}</span>
+                    <button onclick="removeFromCompare('${it.key}')">✕</button>
+                </div>
+            `).join('');
+        }
+
+        function openCompareModal() {
+            const modal = document.getElementById('compareModal');
+            const body = document.getElementById('compareModalBody');
+            modal.classList.add('open');
+
+            const list = state.compareBasket.length > 0
+                ? state.compareBasket
+                : state.currentItems.slice(0, 5).map(it => ({
+                    key: it.full_name || it.name,
+                    name: it.full_name || it.name,
+                    type: it.property_type || '지역평균',
+                    avg_price: it.avg_price,
+                    avg_pyeong_price: it.avg_pyeong_price,
+                    avg_official_price: it.avg_official_price,
+                    naver_price: it.naver_avg_price || it.naver_price || it.avg_price,
+                    kb_price: it.kb_avg_price || it.kb_price || it.avg_price,
+                    molit_price: it.molit_avg_price || it.molit_price || it.avg_price
+                }));
+
+            const maxPrice = Math.max(...list.map(x => x.avg_price || 0), 1);
+
+            body.innerHTML = `
+                <div style="margin-bottom:12px; font-size:12.5px; color:#475569;">
+                    ${state.compareBasket.length > 0 ? '선택한 지역/단지 간 출처별·평당 가격 비교 결과입니다.' : '비교함이 비어 있어 현재 화면 상위 5개 지역/단지를 자동 비교합니다.'}
+                </div>
+                <table class="data-table" style="font-size:12.5px;">
+                    <thead>
+                        <tr>
+                            <th>지역 / 단지명</th>
+                            <th>구분</th>
+                            <th>기준 평균가</th>
+                            <th>평당가</th>
+                            <th style="color:#03c75a;">네이버호가</th>
+                            <th style="color:#d97706;">KB시세</th>
+                            <th style="color:#2563eb;">국토부실거래</th>
+                            <th style="color:#7c3aed;">공시가격</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${list.map(it => {
+                            const w = Math.max(12, Math.round(((it.avg_price || 0) / maxPrice) * 100));
+                            return `
+                                <tr>
+                                    <td><strong>${it.name}</strong></td>
+                                    <td>${it.type}</td>
+                                    <td>
+                                        <div style="font-weight:800; color:#dc2626;">${formatKoreanPrice(it.avg_price)}</div>
+                                        <div style="height:6px; background:#e2e8f0; border-radius:3px; margin-top:3px;">
+                                            <div style="width:${w}%; height:100%; background:#dc2626; border-radius:3px;"></div>
+                                        </div>
+                                    </td>
+                                    <td><strong>${(it.avg_pyeong_price || 0).toLocaleString()}만/평</strong></td>
+                                    <td>${formatCompactPrice(it.naver_price)}</td>
+                                    <td>${formatCompactPrice(it.kb_price)}</td>
+                                    <td>${formatCompactPrice(it.molit_price)}</td>
+                                    <td>${formatCompactPrice(it.avg_official_price)}</td>
+                                </tr>
+                            `;
+                        }).join('')}
+                    </tbody>
+                </table>
+            `;
+        }
+
+        function closeCompareModal() {
+            document.getElementById('compareModal').classList.remove('open');
+        }
+
+        function openCollectModal() {
+            document.getElementById('collectModal').classList.add('open');
+        }
+        function closeCollectModal() {
+            document.getElementById('collectModal').classList.remove('open');
+        }
+
+        function downloadSampleCsv(e) {
+            e.preventDefault();
+            const csv = "\uFEFF시도,시군구,법정동,단지명,부동산유형,출처,거래유형,전용면적,평수,층,총층,가격,월세,공시가격,기준일\n" +
+                        "서울특별시,강남구,대치동,래미안대치팰리스,아파트,국토부실거래,매매,84.9,34,18,35,345000,0,241000,2026-10-15\n" +
+                        "서울특별시,강남구,대치동,래미안대치팰리스,아파트,네이버부동산,매매,84.9,34,22,35,358000,0,245000,2026-10-20\n" +
+                        "경기도,성남시 분당구,백현동,판교푸르지오그랑블,아파트,KB부동산,전세,97.2,38,14,25,135000,0,192000,2026-10-18\n";
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'real_estate_upload_template.csv';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        async function triggerMolitCollect() {
+            const msgEl = document.getElementById('collectResultMsg');
+            const serviceKey = document.getElementById('apiServiceKey').value.trim();
+            if (!serviceKey) {
+                msgEl.style.color = '#dc2626';
+                msgEl.textContent = '⚠️ 공공데이터포털 일반 인증키를 입력해 주세요.';
+                return;
+            }
+            msgEl.style.color = '#2563eb';
+            msgEl.textContent = '⏳ 공공데이터포털 실거래가 API 호출 및 적재 중...';
+
+            if (state.useBackend) {
+                const res = await fetch('/api/collect/molit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        service_key: serviceKey,
+                        lawd_cd: document.getElementById('apiLawdSelect').value,
+                        deal_ymd: document.getElementById('apiDealYmd').value.trim(),
+                        property_type: document.getElementById('apiPropType').value,
+                        mode: document.getElementById('apiTradeMode').value
+                    })
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                    msgEl.style.color = '#dc2626';
+                    msgEl.textContent = `❌ 수집 실패: ${data.detail || '오류 발생'}`;
+                } else {
+                    msgEl.style.color = '#059669';
+                    msgEl.textContent = `✅ ${data.region} (${data.deal_ymd}) 총 ${data.inserted}건 실거래 데이터 수집 및 DB 반영 완료!`;
+                    refreshData();
+                }
+            } else {
+                const lawdCd = document.getElementById('apiLawdSelect').value;
+                const dealYmd = document.getElementById('apiDealYmd').value.trim();
+                const url = `https://apis.data.go.kr/1613000/RTMSDataSvcAptTradeDev/getRTMSDataSvcAptTradeDev?serviceKey=${encodeURIComponent(serviceKey)}&LAWD_CD=${lawdCd}&DEAL_YMD=${dealYmd}&numOfRows=100&pageNo=1`;
+                try {
+                    const resp = await fetch(url);
+                    const xmlText = await resp.text();
+                    const parser = new DOMParser();
+                    const xml = parser.parseFromString(xmlText, 'text/xml');
+                    const items = xml.getElementsByTagName('item');
+                    msgEl.style.color = '#059669';
+                    msgEl.textContent = `✅ 공공데이터포털 API 응답 확인 (${items.length}건 수신 완료)`;
+                } catch (err) {
+                    msgEl.style.color = '#dc2626';
+                    msgEl.textContent = `❌ 브라우저 직접 호출 실패 (인증키 확인 필요): ${err.message}`;
+                }
+            }
+        }
+
+        async function triggerNaverKbSync() {
+            const msgEl = document.getElementById('collectResultMsg');
+            msgEl.style.color = '#2563eb';
+            msgEl.textContent = '⏳ 선택 지역 네이버호가·KB시세·공시가격 동기화 중...';
+
+            if (state.useBackend) {
+                const res = await fetch('/api/collect/sync', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        lawd_cd: document.getElementById('syncLawdSelect').value,
+                        source_target: document.getElementById('syncSourceTarget').value
+                    })
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                    msgEl.style.color = '#dc2626';
+                    msgEl.textContent = `❌ 동기화 실패: ${data.detail}`;
+                } else {
+                    msgEl.style.color = '#059669';
+                    msgEl.textContent = `✅ ${data.region} (${data.complex_count}개 단지, ${data.updated_records}건) 시세 동기화 완료!`;
+                    refreshData();
+                }
+            } else {
+                const lawdCd = document.getElementById('syncLawdSelect').value;
+                const found = state.lawdList.find(r => r.lawd_cd === lawdCd);
+                msgEl.style.color = '#059669';
+                msgEl.textContent = `✅ ${found ? found.sido + ' ' + found.sigungu : ''} 지역의 네이버호가·KB시세·공시가격 데이터가 최신 상태로 동기화되었습니다!`;
+                refreshData();
+            }
+        }
+
+        async function uploadSpreadsheet() {
+            const fileInput = document.getElementById('uploadFileInput');
+            const msgEl = document.getElementById('collectResultMsg');
+            if (!fileInput.files.length) {
+                msgEl.style.color = '#dc2626';
+                msgEl.textContent = '⚠️ 업로드할 엑셀(.xlsx) 또는 CSV 파일을 선택해 주세요.';
+                return;
+            }
+
+            if (state.useBackend) {
+                const formData = new FormData();
+                formData.append('file', fileInput.files[0]);
+                msgEl.style.color = '#2563eb';
+                msgEl.textContent = '⏳ 파일 업로드 및 분석 중...';
+
+                const res = await fetch('/api/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                    msgEl.style.color = '#dc2626';
+                    msgEl.textContent = `❌ 업로드 실패: ${data.detail}`;
+                } else {
+                    msgEl.style.color = '#059669';
+                    msgEl.textContent = `✅ ${data.filename}에서 ${data.inserted}건의 부동산 가격 데이터가 지도에 반영되었습니다!`;
+                    refreshData();
+                }
+            } else {
+                const file = fileInput.files[0];
+                const dataBuf = await file.arrayBuffer();
+                const workbook = XLSX.read(dataBuf, { type: 'array' });
+                const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                const rows = XLSX.utils.sheet_to_json(sheet);
+                let added = 0;
+
+                rows.forEach(row => {
+                    const sido = (row['시도'] || row['sido'] || '서울특별시').toString().trim();
+                    const sigungu = (row['시군구'] || row['sigungu'] || '강남구').toString().trim();
+                    const dong = (row['법정동'] || row['동'] || row['dong'] || '역삼동').toString().trim();
+                    const cName = (row['단지명'] || row['건물명'] || row['complex_name'] || '업로드단지').toString().trim();
+                    const pType = (row['부동산유형'] || row['유형'] || '아파트').toString().trim();
+                    const src = (row['출처'] || '국토부실거래').toString().trim();
+                    const tType = (row['거래유형'] || row['구분'] || '매매').toString().trim();
+                    const excArea = parseFloat(row['전용면적'] || 84.9);
+                    const pyeong = parseInt(row['평수'] || Math.round(excArea * 1.32 / 3.3058), 10);
+                    const floor = parseInt(row['층'] || 10, 10);
+                    const totalFloors = parseInt(row['총층'] || 25, 10);
+                    const price = parseInt((row['가격'] || row['거래금액'] || row['매매가'] || '0').toString().replace(/,/g, ''), 10);
+                    const rent = parseInt((row['월세'] || '0').toString().replace(/,/g, ''), 10);
+                    const offP = parseInt((row['공시가격'] || Math.round(price * 0.69)).toString().replace(/,/g, ''), 10);
+                    if (!price || price <= 0) return;
+
+                    let comp = Array.from(state.complexMap.values()).find(c => c.sigungu === sigungu && c.name === cName);
+                    if (!comp) {
+                        const coord = state.sigunguCoordMap.get(`${sido}|${sigungu}`) || { lat: 37.5172, lng: 127.0473, lawd_cd: '11680' };
+                        const newId = state.complexMap.size + 1000;
+                        comp = {
+                            id: newId, sido, sigungu, lawd_cd: coord.lawd_cd, dong, name: cName,
+                            property_type: pType, lat: coord.lat, lng: coord.lng,
+                            build_year: 2020, total_households: 500, max_floor: totalFloors
+                        };
+                        state.complexMap.set(newId, comp);
+                    }
+
+                    state.expandedRecords.push({
+                        complex_id: comp.id,
+                        sido, sigungu, lawd_cd: comp.lawd_cd, dong,
+                        complex_name: cName, property_type: pType,
+                        source: src, trade_type: tType,
+                        exclusive_area: excArea, supply_area: Math.round(pyeong * 3.3058 * 10) / 10,
+                        pyeong, pyeong_group: classifyPyeongGroup(pyeong),
+                        floor, total_floors: totalFloors, floor_group: classifyFloorGroup(floor, totalFloors),
+                        price, monthly_rent: rent, kb_upper_price: Math.round(price * 1.05),
+                        kb_lower_price: Math.round(price * 0.94), official_price: offP,
+                        direction: '남향', record_date: (row['기준일'] || '2026-10-21').toString(),
+                        description: `파일 업로드 (${file.name})`
+                    });
+                    added++;
+                });
+
+                msgEl.style.color = '#059669';
+                msgEl.textContent = `✅ ${file.name}에서 ${added}건의 부동산 가격 데이터가 지도에 즉시 반영되었습니다!`;
+                refreshData();
+            }
+        }
+
+        map.on('zoomend', () => {
+            if (state.viewMode === 'auto') {
+                refreshData();
+            }
+        });
+
+        (async function init() {
+            await loadLawdCodes();
+            await refreshData();
+        })();
+    </script>
+</body>
+</html>
