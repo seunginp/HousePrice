@@ -1,3 +1,8 @@
 ﻿__pycache__/
 *.pyc
 backend/real_estate.db
+backend/zigbang_seoul_gg_full.json
+backend/osm_seoul_gg.json
+backend/all_complexes_raw.json
+backend/test_zigbang.py
+backend/fetch_all_complexes.py

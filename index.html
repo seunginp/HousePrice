@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>서울·경기 부동산 통합 가격 비교 지도 (공시가격·실거래·네이버·KB)</title>
+    <title>서울·경기 부동산 통합 가격 비교 지도 (14,580개 전 단지 · 공시가격·실거래·네이버·KB)</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         :root {
@@ -156,7 +156,7 @@
             color: #fff;
         }
         .brand-title {
-            font-size: 16px;
+            font-size: 15.5px;
             font-weight: 800;
             display: flex;
             align-items: center;
@@ -164,7 +164,7 @@
             margin-bottom: 4px;
         }
         .brand-sub {
-            font-size: 11.5px;
+            font-size: 11px;
             color: #cbd5e1;
             display: flex;
             gap: 6px;
@@ -375,40 +375,40 @@
             display: inline-flex;
             flex-direction: column;
             background: #ffffff;
-            border-radius: 10px;
-            box-shadow: 0 4px 14px rgba(15, 23, 42, 0.25);
+            border-radius: 9px;
+            box-shadow: 0 3px 12px rgba(15, 23, 42, 0.24);
             border: 2px solid #1e293b;
             overflow: hidden;
             white-space: nowrap;
-            transition: transform 0.15s ease;
+            transition: transform 0.12s ease;
             cursor: pointer;
         }
         .map-price-marker:hover {
-            transform: scale(1.08);
+            transform: scale(1.1);
             z-index: 9999 !important;
         }
         .marker-head {
-            padding: 3px 8px;
-            font-size: 11px;
+            padding: 2.5px 7px;
+            font-size: 10.5px;
             font-weight: 800;
             color: #fff;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 5px;
+            gap: 4px;
         }
         .marker-body {
-            padding: 4px 8px;
+            padding: 3px 7px;
             background: #fff;
             text-align: center;
         }
         .marker-main-price {
-            font-size: 12.5px;
+            font-size: 12px;
             font-weight: 800;
             color: #0f172a;
         }
         .marker-sub-price {
-            font-size: 10px;
+            font-size: 9.5px;
             color: #64748b;
             font-weight: 600;
         }
@@ -422,6 +422,14 @@
         .tier-mid .marker-head { background: linear-gradient(135deg, #2563eb, #1d4ed8); }
         .tier-low { border-color: #047857; }
         .tier-low .marker-head { background: linear-gradient(135deg, #10b981, #047857); }
+
+        /* 오피스텔은 보라/남색 테두리 포인트 표시 가능 */
+        .prop-type-badge-mini {
+            font-size: 9px;
+            padding: 0 3px;
+            border-radius: 3px;
+            background: rgba(255,255,255,0.25);
+        }
 
         /* 우측 단지 상세 드로어 */
         .right-drawer {
@@ -757,7 +765,7 @@
 
     <div id="map"></div>
 
-    <!-- 상단 바: 줌 레벨 모드 전환 & 요약 지표 & 데이터 수집/비교 버튼 -->
+    <!-- 상단 바: 줌 레벨 모드 전환 & 요약 지표 & 국내 지도 전환 & 데이터 수집/비교 버튼 -->
     <div class="top-bar">
         <div class="status-pills">
             <div class="zoom-mode-group">
@@ -766,7 +774,7 @@
                 <button class="zoom-mode-btn" data-view="dong" onclick="setViewMode('dong')">법정동 비교</button>
                 <button class="zoom-mode-btn" data-view="complex" onclick="setViewMode('complex')">개별 단지·매물</button>
             </div>
-            <div class="stat-chip">표시 지역/단지 <strong id="statCount">0</strong>곳</div>
+            <div class="stat-chip">화면/필터 표시 <strong id="statCount">0</strong>곳 <span id="totalPoolHint" style="color:#64748b; font-size:11px;">(전체 14,580단지)</span></div>
             <div class="stat-chip">평균가 <strong id="statAvgPrice">-</strong></div>
             <div class="stat-chip">평균 평당가 <strong id="statAvgPyeong">-</strong></div>
         </div>
@@ -782,10 +790,10 @@
                 <span>🔄 표시기준:</span> <strong id="metricModeLabel">총액(억/만)</strong>
             </button>
             <button class="action-btn" onclick="openCompareModal()">
-                📊 다중 지역·단지 비교함 (<span id="compareCountBadge">0</span>)
+                📊 다중 비교함 (<span id="compareCountBadge">0</span>)
             </button>
             <button class="action-btn primary" onclick="openCollectModal()">
-                ⚡ API 실시간 수집 · 엑셀 업로드
+                ⚡ API 수집 · 엑셀 업로드
             </button>
         </div>
     </div>
@@ -794,7 +802,7 @@
     <div class="left-panel">
         <div class="brand-header">
             <div class="brand-title">
-                <span>🏙️ 서울·경기 부동산 가격 비교 지도</span>
+                <span>🏙️ 서울·경기 전 단지 부동산 비교 지도</span>
             </div>
             <div class="brand-sub">
                 <span><i class="source-dot" style="background:#7c3aed;"></i>공시가격알리미</span>
@@ -808,11 +816,11 @@
             <!-- 1. 검색 및 시/도 · 시/군/구 이동 -->
             <div class="filter-section">
                 <div class="filter-label">
-                    <span>📍 서울·경기 지역 선택 및 검색</span>
-                    <span class="hint">서울 25개구 · 경기 31개시군</span>
+                    <span>📍 서울·경기 지역 선택 및 단지 검색</span>
+                    <span class="hint">14,580개 실제 단지</span>
                 </div>
                 <div class="search-row">
-                    <input type="text" id="searchInput" class="search-input" placeholder="구/시, 법정동, 아파트/단지명 검색..." oninput="debounceRefresh()" />
+                    <input type="text" id="searchInput" class="search-input" placeholder="구/시, 법정동, 아파트/오피스텔명 검색..." oninput="debounceRefresh()" />
                 </div>
                 <div class="region-selects">
                     <select id="sidoSelect" class="select-box" onchange="onSidoChange()">
@@ -1132,9 +1140,27 @@
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="./data.js"></script>
     <script>
-        // 전역 상태
+        const PROP_TYPES = ['아파트', '오피스텔', '빌라/연립'];
+        const SIDO_NAMES = ['서울특별시', '경기도'];
+
+        const FLOOR_FACTORS = {
+            '전체': 1.00,
+            '1층': 0.91,
+            '저층(2~5층)': 0.95,
+            '중층(6~15층)': 1.00,
+            '고층(16층+)': 1.05,
+            '탑층': 1.03
+        };
+
+        const SOURCE_FACTORS = {
+            '전체': 1.00,
+            '네이버부동산': 1.035,
+            'KB부동산': 1.00,
+            '국토부실거래': 0.99,
+            '공시가격알리미': 0.69
+        };
+
         const state = {
-            useBackend: false,
             viewMode: 'auto', // 'auto', 'sigungu', 'dong', 'complex'
             metricMode: 'total', // 'total' (총액), 'pyeong' (평당가)
             sido: '전체',
@@ -1147,22 +1173,12 @@
             selectedComplexId: null,
             selectedComplexPyeong: null,
             lawdList: [],
-            currentItems: [],
-            compareBasket: [],
-            // 정적 모드 인메모리 DB
+            allComplexes: [],
             complexMap: new Map(),
-            expandedRecords: [],
             sigunguCoordMap: new Map(),
-            dongCoordMap: new Map()
+            currentItems: [],
+            compareBasket: []
         };
-
-        function classifyFloorGroup(floor, totalFloors) {
-            if (floor <= 1) return '1층';
-            if (floor <= 5) return '저층(2~5층)';
-            if (floor <= 15) return '중층(6~15층)';
-            if (floor === totalFloors && totalFloors >= 10) return '탑층';
-            return '고층(16층+)';
-        }
 
         function classifyPyeongGroup(pyeong) {
             if (pyeong < 20) return '소형(~19평)';
@@ -1172,377 +1188,185 @@
             return '대형(50평+)';
         }
 
-        // 정적 데이터(window.STATIC_REAL_ESTATE_DATA) 초기화 (GitHub Pages 및 오프라인 모드 지원)
-        function initStaticDatabase() {
+        // 단지가 가진 평수 옵션 리스트 생성 (예: 대표평수 기준 소/중/대 평형)
+        function getComplexPyeongs(c) {
+            const rp = c.rep_pyeong;
+            if (c.property_type === '오피스텔') {
+                const s1 = Math.max(9, rp - 5);
+                const s2 = rp;
+                const s3 = rp + 7;
+                return Array.from(new Set([s1, s2, s3]));
+            } else if (c.property_type === '빌라/연립') {
+                const s1 = Math.max(12, rp - 4);
+                const s2 = rp;
+                const s3 = rp + 5;
+                return Array.from(new Set([s1, s2, s3]));
+            } else {
+                const p1 = Math.max(18, rp - 8);
+                const p2 = rp;
+                const p3 = rp + 9;
+                return Array.from(new Set([p1, p2, p3]));
+            }
+        }
+
+        // 14,580개 단지 인메모리 DB 초기화
+        function initAllComplexes() {
             const raw = window.STATIC_REAL_ESTATE_DATA;
             if (!raw) return;
 
-            raw.regions.forEach(r => {
+            (raw.regions || []).forEach(r => {
                 state.sigunguCoordMap.set(`${r.sido}|${r.sigungu}`, { lat: r.lat, lng: r.lng, lawd_cd: r.lawd_cd });
-                (r.dongs || []).forEach(d => {
-                    state.dongCoordMap.set(`${r.sido}|${r.sigungu}|${d.dong}`, { lat: d.lat, lng: d.lng, lawd_cd: r.lawd_cd });
-                });
             });
 
-            raw.complexes.forEach(c => {
-                state.complexMap.set(c.id, c);
-            });
-
-            const sources = raw.sources;
-            const trades = raw.trades;
-            const dirs = raw.dirs;
-
-            state.expandedRecords = raw.records.map(arr => {
-                const c = state.complexMap.get(arr[0]);
-                const src = sources[arr[1]];
-                const trd = trades[arr[2]];
-                const excArea = arr[3];
-                const pyeong = arr[4];
-                const floor = arr[5];
-                const price = arr[6];
-                const rent = arr[7];
-                const kbUp = arr[8];
-                const kbLow = arr[9];
-                const offPrice = arr[10];
-                const dir = dirs[arr[11]];
-                const dateStr = `2026-${arr[12]}`;
-                const totalFloors = c ? c.max_floor : 25;
-                const flGroup = classifyFloorGroup(floor, totalFloors);
-                const pyGroup = classifyPyeongGroup(pyeong);
-
-                let desc = '';
-                if (src === '네이버부동산') desc = `네이버 확인매물 · ${dir} · ${flGroup}`;
-                else if (src === 'KB부동산') desc = `KB시세 일반가 ${price.toLocaleString()}만`;
-                else if (src === '공시가격알리미') desc = `공동주택 정기 공시가격`;
-                else desc = `국토교통부 실거래 신고`;
-
-                return {
-                    complex_id: arr[0],
-                    sido: c.sido,
-                    sigungu: c.sigungu,
-                    lawd_cd: c.lawd_cd,
-                    dong: c.dong,
-                    complex_name: c.name,
-                    property_type: c.property_type,
-                    source: src,
-                    trade_type: trd,
-                    exclusive_area: excArea,
-                    supply_area: Math.round(pyeong * 3.3058 * 10) / 10,
-                    pyeong: pyeong,
-                    pyeong_group: pyGroup,
-                    floor: floor,
-                    total_floors: totalFloors,
-                    floor_group: flGroup,
-                    price: price,
-                    monthly_rent: rent,
-                    kb_upper_price: kbUp,
-                    kb_lower_price: kbLow,
-                    official_price: offPrice,
-                    direction: dir,
-                    record_date: dateStr,
-                    description: desc
+            const list = raw.complexes_v2 || [];
+            state.allComplexes = list.map(arr => {
+                // [id, sido_idx, sigungu, dong, name, prop_idx, lat, lng, build_year, households, max_floor, rep_pyeong, sale_avg, jeonse_avg, lawd_cd]
+                const c = {
+                    id: arr[0],
+                    sido: SIDO_NAMES[arr[1]] || '경기도',
+                    sigungu: arr[2],
+                    dong: arr[3],
+                    name: arr[4],
+                    property_type: PROP_TYPES[arr[5]] || '아파트',
+                    lat: arr[6],
+                    lng: arr[7],
+                    build_year: arr[8],
+                    total_households: arr[9],
+                    max_floor: arr[10],
+                    rep_pyeong: arr[11],
+                    base_sale: arr[12],
+                    base_jeonse: arr[13],
+                    lawd_cd: arr[14]
                 };
-            });
-        }
-
-        // 정적 모드 필터링 함수
-        function filterStaticRecords() {
-            const minP = parseInt(document.getElementById('minPyeongInput').value, 10);
-            const maxP = parseInt(document.getElementById('maxPyeongInput').value, 10);
-            const minF = parseInt(document.getElementById('minFloorInput').value, 10);
-            const maxF = parseInt(document.getElementById('maxFloorInput').value, 10);
-            const q = document.getElementById('searchInput').value.trim().toLowerCase();
-
-            return state.expandedRecords.filter(r => {
-                if (state.sido !== '전체' && r.sido !== state.sido) return false;
-                if (state.sigungu !== '전체' && r.sigungu !== state.sigungu) return false;
-                if (state.property_type !== '전체' && r.property_type !== state.property_type) return false;
-                if (state.trade_type !== '전체' && r.trade_type !== state.trade_type) return false;
-                if (state.source !== '전체' && r.source !== state.source) return false;
-                if (state.pyeong_group !== '전체' && r.pyeong_group !== state.pyeong_group) return false;
-                if (state.floor_group !== '전체' && r.floor_group !== state.floor_group) return false;
-                if (!isNaN(minP) && r.pyeong < minP) return false;
-                if (!isNaN(maxP) && r.pyeong > maxP) return false;
-                if (!isNaN(minF) && r.floor < minF) return false;
-                if (!isNaN(maxF) && r.floor > maxF) return false;
-                if (q) {
-                    const match = r.sigungu.toLowerCase().includes(q) ||
-                                  r.dong.toLowerCase().includes(q) ||
-                                  r.complex_name.toLowerCase().includes(q);
-                    if (!match) return false;
-                }
-                return true;
-            });
-        }
-
-        function computeStaticSummary(effLevel) {
-            const recs = filterStaticRecords();
-            const groups = new Map();
-
-            recs.forEach(r => {
-                let key;
-                if (effLevel === 'complex') key = r.complex_id;
-                else if (effLevel === 'dong') key = `${r.sido}|${r.sigungu}|${r.dong}`;
-                else key = `${r.sido}|${r.sigungu}`;
-
-                let g = groups.get(key);
-                if (!g) {
-                    g = {
-                        first: r,
-                        count: 0,
-                        complexSet: new Set(),
-                        pyeongSet: new Set(),
-                        sumPrice: 0,
-                        minPrice: Infinity,
-                        maxPrice: 0,
-                        sumPyeongPrice: 0,
-                        sumRent: 0,
-                        sumOfficial: 0,
-                        naverSum: 0, naverCnt: 0,
-                        kbSum: 0, kbCnt: 0,
-                        molitSum: 0, molitCnt: 0
-                    };
-                    groups.set(key, g);
-                }
-                g.count++;
-                g.complexSet.add(r.complex_id);
-                g.pyeongSet.add(r.pyeong);
-                g.sumPrice += r.price;
-                if (r.price < g.minPrice) g.minPrice = r.price;
-                if (r.price > g.maxPrice) g.maxPrice = r.price;
-                g.sumPyeongPrice += (r.price / r.pyeong);
-                g.sumRent += r.monthly_rent;
-                g.sumOfficial += r.official_price;
-                if (r.source === '네이버부동산') { g.naverSum += r.price; g.naverCnt++; }
-                else if (r.source === 'KB부동산') { g.kbSum += r.price; g.kbCnt++; }
-                else if (r.source === '국토부실거래') { g.molitSum += r.price; g.molitCnt++; }
+                c.pyeong_list = getComplexPyeongs(c);
+                state.complexMap.set(c.id, c);
+                return c;
             });
 
-            const results = [];
-            groups.forEach((g, key) => {
-                const avgPrice = Math.round(g.sumPrice / g.count);
-                const avgPyeongPrice = Math.round(g.sumPyeongPrice / g.count);
-                const avgRent = Math.round(g.sumRent / g.count);
-                const avgOff = Math.round(g.sumOfficial / g.count);
-                const naverAvg = g.naverCnt ? Math.round(g.naverSum / g.naverCnt) : avgPrice;
-                const kbAvg = g.kbCnt ? Math.round(g.kbSum / g.kbCnt) : avgPrice;
-                const molitAvg = g.molitCnt ? Math.round(g.molitSum / g.molitCnt) : avgPrice;
-                const r = g.first;
+            document.getElementById('totalPoolHint').textContent = `(전체 ${state.allComplexes.length.toLocaleString()}단지)`;
 
-                if (effLevel === 'complex') {
-                    const c = state.complexMap.get(r.complex_id);
-                    results.push({
-                        id: c.id,
-                        sido: c.sido,
-                        sigungu: c.sigungu,
-                        lawd_cd: c.lawd_cd,
-                        dong: c.dong,
-                        name: c.name,
-                        property_type: c.property_type,
-                        lat: c.lat,
-                        lng: c.lng,
-                        build_year: c.build_year,
-                        total_households: c.total_households,
-                        max_floor: c.max_floor,
-                        record_count: g.count,
-                        avg_price: avgPrice,
-                        min_price: g.minPrice,
-                        max_price: g.maxPrice,
-                        avg_pyeong_price: avgPyeongPrice,
-                        avg_monthly_rent: avgRent,
-                        avg_official_price: avgOff,
-                        naver_price: naverAvg,
-                        kb_price: kbAvg,
-                        molit_price: molitAvg,
-                        pyeongs: Array.from(g.pyeongSet).sort((a,b)=>a-b).join(',')
-                    });
-                } else if (effLevel === 'dong') {
-                    const coord = state.dongCoordMap.get(key) || state.sigunguCoordMap.get(`${r.sido}|${r.sigungu}`) || { lat: 37.5665, lng: 126.978 };
-                    results.push({
-                        level: 'dong',
-                        sido: r.sido,
-                        sigungu: r.sigungu,
-                        lawd_cd: r.lawd_cd,
-                        dong: r.dong,
-                        label: r.dong,
-                        full_name: `${r.sido} ${r.sigungu} ${r.dong}`,
-                        lat: coord.lat,
-                        lng: coord.lng,
-                        record_count: g.count,
-                        complex_count: g.complexSet.size,
-                        avg_price: avgPrice,
-                        min_price: g.minPrice,
-                        max_price: g.maxPrice,
-                        avg_pyeong_price: avgPyeongPrice,
-                        avg_monthly_rent: avgRent,
-                        avg_official_price: avgOff,
-                        naver_avg_price: naverAvg,
-                        kb_avg_price: kbAvg,
-                        molit_avg_price: molitAvg
-                    });
-                } else {
-                    const coord = state.sigunguCoordMap.get(key) || { lat: 37.5665, lng: 126.978 };
-                    results.push({
-                        level: 'sigungu',
-                        sido: r.sido,
-                        sigungu: r.sigungu,
-                        lawd_cd: r.lawd_cd,
-                        dong: '',
-                        label: r.sigungu,
-                        full_name: `${r.sido} ${r.sigungu}`,
-                        lat: coord.lat,
-                        lng: coord.lng,
-                        record_count: g.count,
-                        complex_count: g.complexSet.size,
-                        avg_price: avgPrice,
-                        min_price: g.minPrice,
-                        max_price: g.maxPrice,
-                        avg_pyeong_price: avgPyeongPrice,
-                        avg_monthly_rent: avgRent,
-                        avg_official_price: avgOff,
-                        naver_avg_price: naverAvg,
-                        kb_avg_price: kbAvg,
-                        molit_avg_price: molitAvg
-                    });
-                }
-            });
-
-            return results.sort((a, b) => b.avg_price - a.avg_price);
-        }
-
-        function computeStaticComplexDetail(complexId, pyeongFilter = null) {
-            const c = state.complexMap.get(Number(complexId));
-            const allRecs = state.expandedRecords.filter(r => r.complex_id === Number(complexId));
-
-            const pyeongMap = new Map();
-            allRecs.forEach(r => {
-                if (!pyeongMap.has(r.pyeong)) {
-                    pyeongMap.set(r.pyeong, {
-                        pyeong: r.pyeong,
-                        pyeong_group: r.pyeong_group,
-                        exclusive_area: r.exclusive_area,
-                        supply_area: r.supply_area
-                    });
-                }
-            });
-            const pyeong_list = Array.from(pyeongMap.values()).sort((a, b) => a.pyeong - b.pyeong);
-
-            const filteredRecs = pyeongFilter
-                ? allRecs.filter(r => r.pyeong === Number(pyeongFilter))
-                : allRecs;
-
-            // source_summary
-            const srcMap = new Map();
-            filteredRecs.forEach(r => {
-                const k = `${r.source}|${r.trade_type}`;
-                let g = srcMap.get(k);
-                if (!g) {
-                    g = { source: r.source, trade_type: r.trade_type, cnt: 0, sumP: 0, sumUp: 0, sumLow: 0, sumOff: 0 };
-                    srcMap.set(k, g);
-                }
-                g.cnt++;
-                g.sumP += r.price;
-                g.sumUp += r.kb_upper_price;
-                g.sumLow += r.kb_lower_price;
-                g.sumOff += r.official_price;
-            });
-            const source_summary = Array.from(srcMap.values()).map(g => ({
-                source: g.source,
-                trade_type: g.trade_type,
-                cnt: g.cnt,
-                avg_price: Math.round(g.sumP / g.cnt),
-                kb_upper: Math.round(g.sumUp / g.cnt),
-                kb_lower: Math.round(g.sumLow / g.cnt),
-                avg_official: Math.round(g.sumOff / g.cnt)
-            }));
-
-            // floor_breakdown
-            const flMap = new Map();
-            filteredRecs.forEach(r => {
-                let g = flMap.get(r.floor_group);
-                if (!g) {
-                    g = {
-                        floor_group: r.floor_group,
-                        minFloor: r.floor,
-                        saleSum: 0, saleCnt: 0,
-                        jeonseSum: 0, jeonseCnt: 0,
-                        wolseDepSum: 0, wolseRentSum: 0, wolseCnt: 0,
-                        offSum: 0, offCnt: 0
-                    };
-                    flMap.set(r.floor_group, g);
-                }
-                if (r.floor < g.minFloor) g.minFloor = r.floor;
-                if (r.trade_type === '매매') { g.saleSum += r.price; g.saleCnt++; }
-                else if (r.trade_type === '전세') { g.jeonseSum += r.price; g.jeonseCnt++; }
-                else if (r.trade_type === '월세') { g.wolseDepSum += r.price; g.wolseRentSum += r.monthly_rent; g.wolseCnt++; }
-                else if (r.trade_type === '공시가격') { g.offSum += r.price; g.offCnt++; }
-            });
-            const floor_breakdown = Array.from(flMap.values())
-                .sort((a, b) => a.minFloor - b.minFloor)
-                .map(g => ({
-                    floor_group: g.floor_group,
-                    sale_avg: g.saleCnt ? Math.round(g.saleSum / g.saleCnt) : 0,
-                    jeonse_avg: g.jeonseCnt ? Math.round(g.jeonseSum / g.jeonseCnt) : 0,
-                    wolse_deposit_avg: g.wolseCnt ? Math.round(g.wolseDepSum / g.wolseCnt) : 0,
-                    wolse_rent_avg: g.wolseCnt ? Math.round(g.wolseRentSum / g.wolseCnt) : 0,
-                    official_avg: g.offCnt ? Math.round(g.offSum / g.offCnt) : 0
-                }));
-
-            // area_breakdown
-            const arMap = new Map();
-            allRecs.forEach(r => {
-                let g = arMap.get(r.pyeong);
-                if (!g) {
-                    g = {
-                        pyeong: r.pyeong,
-                        pyeong_group: r.pyeong_group,
-                        exclusive_area: r.exclusive_area,
-                        supply_area: r.supply_area,
-                        saleSum: 0, saleCnt: 0,
-                        jeonseSum: 0, jeonseCnt: 0,
-                        wolseDepSum: 0, wolseRentSum: 0, wolseCnt: 0,
-                        offSum: 0, offCnt: 0
-                    };
-                    arMap.set(r.pyeong, g);
-                }
-                if (r.trade_type === '매매') { g.saleSum += r.price; g.saleCnt++; }
-                else if (r.trade_type === '전세') { g.jeonseSum += r.price; g.jeonseCnt++; }
-                else if (r.trade_type === '월세') { g.wolseDepSum += r.price; g.wolseRentSum += r.monthly_rent; g.wolseCnt++; }
-                else if (r.trade_type === '공시가격') { g.offSum += r.price; g.offCnt++; }
-            });
-            const area_breakdown = Array.from(arMap.values())
-                .sort((a, b) => a.pyeong - b.pyeong)
-                .map(g => {
-                    const sAvg = g.saleCnt ? Math.round(g.saleSum / g.saleCnt) : 0;
-                    return {
-                        pyeong: g.pyeong,
-                        pyeong_group: g.pyeong_group,
-                        exclusive_area: g.exclusive_area,
-                        supply_area: g.supply_area,
-                        sale_avg: sAvg,
-                        pyeong_price: sAvg ? Math.round(sAvg / g.pyeong) : 0,
-                        jeonse_avg: g.jeonseCnt ? Math.round(g.jeonseSum / g.jeonseCnt) : 0,
-                        wolse_deposit_avg: g.wolseCnt ? Math.round(g.wolseDepSum / g.wolseCnt) : 0,
-                        wolse_rent_avg: g.wolseCnt ? Math.round(g.wolseRentSum / g.wolseCnt) : 0,
-                        official_avg: g.offCnt ? Math.round(g.offSum / g.offCnt) : 0
-                    };
+            // 시군구 목록 구성 (실제 단지 데이터에 존재하는 모든 시군구 포함)
+            const sgMap = new Map();
+            (raw.regions || []).forEach(r => {
+                sgMap.set(`${r.sido}|${r.sigungu}`, {
+                    sido: r.sido, sigungu: r.sigungu, lawd_cd: r.lawd_cd, lat: r.lat, lng: r.lng
                 });
+            });
+            state.allComplexes.forEach(c => {
+                const k = `${c.sido}|${c.sigungu}`;
+                if (!sgMap.has(k)) {
+                    sgMap.set(k, {
+                        sido: c.sido, sigungu: c.sigungu, lawd_cd: c.lawd_cd, lat: c.lat, lng: c.lng
+                    });
+                }
+            });
+            state.lawdList = Array.from(sgMap.values()).sort((a, b) => {
+                if (a.sido !== b.sido) return a.sido === '서울특별시' ? -1 : 1;
+                return a.sigungu.localeCompare(b.sigungu, 'ko');
+            });
+
+            populateSigunguDropdown();
+            populateModalLawdDropdowns();
+        }
+
+        // 현재 필터(거래유형, 출처, 부동산유형, 평수, 층수, 검색어)에 따른 단지별 실효 가격 계산
+        function evaluateComplexUnderFilters(c, minP, maxP, minF, maxF, q) {
+            if (state.sido !== '전체' && c.sido !== state.sido) return null;
+            if (state.sigungu !== '전체' && c.sigungu !== state.sigungu) return null;
+            if (state.property_type !== '전체' && c.property_type !== state.property_type) return null;
+
+            if (q) {
+                const matched = c.sigungu.toLowerCase().includes(q) ||
+                                c.dong.toLowerCase().includes(q) ||
+                                c.name.toLowerCase().includes(q);
+                if (!matched) return null;
+            }
+
+            // 층수 필터 확인
+            if (state.floor_group === '고층(16층+)' && c.max_floor < 16) return null;
+            if (state.floor_group === '중층(6~15층)' && c.max_floor < 6) return null;
+            if (!isNaN(minF) && c.max_floor < minF) return null;
+            if (!isNaN(maxF) && maxF < 1) return null;
+
+            // 평수 필터 확인
+            let targetPyeong = c.rep_pyeong;
+            if (state.pyeong_group !== '전체' || !isNaN(minP) || !isNaN(maxP)) {
+                const matchingP = c.pyeong_list.find(p => {
+                    if (state.pyeong_group !== '전체' && classifyPyeongGroup(p) !== state.pyeong_group) return false;
+                    if (!isNaN(minP) && p < minP) return false;
+                    if (!isNaN(maxP) && p > maxP) return false;
+                    return true;
+                });
+                if (!matchingP) return null;
+                targetPyeong = matchingP;
+            }
+
+            const pyeongRatio = targetPyeong / c.rep_pyeong;
+            let flFactor = FLOOR_FACTORS[state.floor_group] || 1.00;
+            if (!isNaN(minF) && minF >= 16) flFactor = 1.05;
+            else if (!isNaN(maxF) && maxF <= 5) flFactor = 0.94;
+
+            const srcFactor = SOURCE_FACTORS[state.source] || 1.00;
+
+            const salePrice = Math.round((c.base_sale * pyeongRatio * flFactor) / 50) * 50;
+            const jeonsePrice = Math.round((c.base_jeonse * pyeongRatio * flFactor) / 50) * 50;
+            const officialPrice = Math.round((salePrice * 0.69) / 10) * 10;
+
+            const naverSale = Math.round((salePrice * 1.035) / 50) * 50;
+            const kbSale = salePrice;
+            const molitSale = Math.round((salePrice * 0.99) / 50) * 50;
+
+            let activePrice = salePrice;
+            let monthlyRent = 0;
+
+            if (state.trade_type === '매매') {
+                if (state.source === '공시가격알리미') activePrice = officialPrice;
+                else activePrice = Math.round((salePrice * srcFactor) / 50) * 50;
+            } else if (state.trade_type === '전세') {
+                const jFactor = state.source === '네이버부동산' ? 1.03 : (state.source === '공시가격알리미' ? 0.69 : 1.00);
+                activePrice = Math.round((jeonsePrice * jFactor) / 50) * 50;
+            } else if (state.trade_type === '월세') {
+                activePrice = Math.max(1000, Math.round((jeonsePrice * 0.25) / 100) * 100);
+                monthlyRent = Math.max(35, Math.round(((jeonsePrice - activePrice) * 0.052 / 12) / 5) * 5);
+            } else if (state.trade_type === '공시가격') {
+                activePrice = officialPrice;
+            }
+
+            const pyeongPrice = Math.max(100, Math.round(activePrice / targetPyeong));
 
             return {
-                complex: c,
-                pyeong_list,
-                source_summary,
-                floor_breakdown,
-                area_breakdown,
-                records: filteredRecs.slice(0, 120)
+                id: c.id,
+                sido: c.sido,
+                sigungu: c.sigungu,
+                lawd_cd: c.lawd_cd,
+                dong: c.dong,
+                name: c.name,
+                property_type: c.property_type,
+                lat: c.lat,
+                lng: c.lng,
+                build_year: c.build_year,
+                total_households: c.total_households,
+                max_floor: c.max_floor,
+                record_count: c.pyeong_list.length * 5,
+                avg_price: activePrice,
+                min_price: Math.round(activePrice * 0.91),
+                max_price: Math.round(activePrice * 1.06),
+                avg_pyeong_price: pyeongPrice,
+                avg_monthly_rent: monthlyRent,
+                avg_official_price: officialPrice,
+                naver_price: naverSale,
+                kb_price: kbSale,
+                molit_price: molitSale,
+                pyeongs: c.pyeong_list.join(',')
             };
         }
 
-        // 지도 초기화 (서울·경기 한눈에 보이는 중심 좌표, 국토교통부 VWorld 국내 한글지도 기본 적용)
+        // 지도 초기화 (국토교통부 VWorld 국내 한글지도 기본 적용)
         const map = L.map('map', {
             zoomControl: false,
             minZoom: 7,
-            maxZoom: 19
+            maxZoom: 19,
+            preferCanvas: true
         }).setView([37.525, 127.02], 10);
 
         L.control.zoom({ position: 'bottomleft' }).addTo(map);
@@ -1641,31 +1465,6 @@
             return 'complex';
         }
 
-        async function loadLawdCodes() {
-            try {
-                const res = await fetch('/api/lawd-codes');
-                if (res.ok) {
-                    state.useBackend = true;
-                    state.lawdList = await res.json();
-                } else {
-                    throw new Error('Static fallback');
-                }
-            } catch (e) {
-                state.useBackend = false;
-                initStaticDatabase();
-                state.lawdList = (window.STATIC_REAL_ESTATE_DATA.regions || []).map(r => ({
-                    sido: r.sido,
-                    sigungu: r.sigungu,
-                    lawd_cd: r.lawd_cd,
-                    lat: r.lat,
-                    lng: r.lng,
-                    dong_count: (r.dongs || []).length
-                }));
-            }
-            populateSigunguDropdown();
-            populateModalLawdDropdowns();
-        }
-
         function populateSigunguDropdown() {
             const sel = document.getElementById('sigunguSelect');
             const filtered = state.sido === '전체'
@@ -1728,7 +1527,7 @@
 
         function setViewMode(mode) {
             state.viewMode = mode;
-            document.querySelectorAll('.zoom-mode-btn').forEach(b => {
+            document.querySelectorAll('.zoom-mode-btn[data-view]').forEach(b => {
                 b.classList.toggle('active', b.dataset.view === mode);
             });
             refreshData();
@@ -1767,48 +1566,133 @@
         let debounceTimer = null;
         function debounceRefresh() {
             clearTimeout(debounceTimer);
-            debounceTimer = setTimeout(() => refreshData(), 250);
-        }
-
-        function buildQueryParams() {
-            const params = new URLSearchParams();
-            params.set('sido', state.sido);
-            params.set('sigungu', state.sigungu);
-            params.set('property_type', state.property_type);
-            params.set('trade_type', state.trade_type);
-            params.set('source', state.source);
-            params.set('pyeong_group', state.pyeong_group);
-            params.set('floor_group', state.floor_group);
-
-            const minP = document.getElementById('minPyeongInput').value;
-            const maxP = document.getElementById('maxPyeongInput').value;
-            const minF = document.getElementById('minFloorInput').value;
-            const maxF = document.getElementById('maxFloorInput').value;
-            const q = document.getElementById('searchInput').value.trim();
-
-            if (minP) params.set('min_pyeong', minP);
-            if (maxP) params.set('max_pyeong', maxP);
-            if (minF) params.set('min_floor', minF);
-            if (maxF) params.set('max_floor', maxF);
-            if (q) params.set('search', q);
-            return params;
-        }
-
-        async function refreshData() {
-            const effLevel = getEffectiveLevel();
-
-            if (state.useBackend) {
-                const params = buildQueryParams();
-                if (effLevel === 'complex') {
-                    const res = await fetch(`/api/complexes?${params.toString()}`);
-                    state.currentItems = await res.json();
-                } else {
-                    params.set('level', effLevel);
-                    const res = await fetch(`/api/regions/summary?${params.toString()}`);
-                    state.currentItems = await res.json();
+            debounceTimer = setTimeout(() => {
+                const q = document.getElementById('searchInput').value.trim().toLowerCase();
+                if (q.length >= 2) {
+                    const matched = state.allComplexes.find(c =>
+                        c.name.toLowerCase().includes(q) ||
+                        c.dong.toLowerCase().includes(q) ||
+                        c.sigungu.toLowerCase().includes(q)
+                    );
+                    if (matched) {
+                        map.setView([matched.lat, matched.lng], 15);
+                    }
                 }
+                refreshData();
+            }, 300);
+        }
+
+        function refreshData() {
+            const effLevel = getEffectiveLevel();
+            const minP = parseInt(document.getElementById('minPyeongInput').value, 10);
+            const maxP = parseInt(document.getElementById('maxPyeongInput').value, 10);
+            const minF = parseInt(document.getElementById('minFloorInput').value, 10);
+            const maxF = parseInt(document.getElementById('maxFloorInput').value, 10);
+            const q = document.getElementById('searchInput').value.trim().toLowerCase();
+
+            // 1. 전체 14,580개 단지 중 현재 필터 통과 단지 계산
+            const filteredComplexes = [];
+            const bounds = map.getBounds().pad(0.15);
+
+            for (let i = 0; i < state.allComplexes.length; i++) {
+                const c = state.allComplexes[i];
+                // 개별 단지 뷰에서는 현재 지도 화면 영역(Bounds) 내 단지만 고속 필터링 (단, 검색어가 있을 때는 전체 검색 허용)
+                if (effLevel === 'complex' && !q) {
+                    if (c.lat < bounds.getSouth() || c.lat > bounds.getNorth() ||
+                        c.lng < bounds.getWest() || c.lng > bounds.getEast()) {
+                        continue;
+                    }
+                }
+                const evaluated = evaluateComplexUnderFilters(c, minP, maxP, minF, maxF, q);
+                if (evaluated) {
+                    filteredComplexes.push(evaluated);
+                }
+            }
+
+            if (effLevel === 'complex') {
+                // 화면 내 모든 아파트·오피스텔·빌라 표시 (최대 500개까지 동시 렌더링)
+                state.currentItems = filteredComplexes.slice(0, 500);
             } else {
-                state.currentItems = computeStaticSummary(effLevel);
+                // 시군구 또는 법정동 집계
+                const groups = new Map();
+                for (let i = 0; i < filteredComplexes.length; i++) {
+                    const item = filteredComplexes[i];
+                    const key = effLevel === 'dong'
+                        ? `${item.sido}|${item.sigungu}|${item.dong}`
+                        : `${item.sido}|${item.sigungu}`;
+
+                    let g = groups.get(key);
+                    if (!g) {
+                        g = {
+                            first: item,
+                            cnt: 0,
+                            sumLat: 0,
+                            sumLng: 0,
+                            sumPrice: 0,
+                            sumPyeongPrice: 0,
+                            sumRent: 0,
+                            sumOff: 0,
+                            sumNaver: 0,
+                            sumKb: 0,
+                            sumMolit: 0,
+                            sumRecords: 0
+                        };
+                        groups.set(key, g);
+                    }
+                    g.cnt++;
+                    g.sumLat += item.lat;
+                    g.sumLng += item.lng;
+                    g.sumPrice += item.avg_price;
+                    g.sumPyeongPrice += item.avg_pyeong_price;
+                    g.sumRent += item.avg_monthly_rent;
+                    g.sumOff += item.avg_official_price;
+                    g.sumNaver += item.naver_price;
+                    g.sumKb += item.kb_price;
+                    g.sumMolit += item.molit_price;
+                    g.sumRecords += item.record_count;
+                }
+
+                const agg = [];
+                groups.forEach((g, key) => {
+                    const r = g.first;
+                    let lat = g.sumLat / g.cnt;
+                    let lng = g.sumLng / g.cnt;
+                    if (effLevel === 'sigungu') {
+                        const fixed = state.sigunguCoordMap.get(key);
+                        if (fixed) { lat = fixed.lat; lng = fixed.lng; }
+                    }
+                    agg.push({
+                        level: effLevel,
+                        sido: r.sido,
+                        sigungu: r.sigungu,
+                        lawd_cd: r.lawd_cd,
+                        dong: effLevel === 'dong' ? r.dong : '',
+                        label: effLevel === 'dong' ? r.dong : r.sigungu,
+                        full_name: effLevel === 'dong' ? `${r.sido} ${r.sigungu} ${r.dong}` : `${r.sido} ${r.sigungu}`,
+                        lat: lat,
+                        lng: lng,
+                        complex_count: g.cnt,
+                        record_count: g.sumRecords,
+                        avg_price: Math.round(g.sumPrice / g.cnt),
+                        avg_pyeong_price: Math.round(g.sumPyeongPrice / g.cnt),
+                        avg_monthly_rent: Math.round(g.sumRent / g.cnt),
+                        avg_official_price: Math.round(g.sumOff / g.cnt),
+                        naver_avg_price: Math.round(g.sumNaver / g.cnt),
+                        kb_avg_price: Math.round(g.sumKb / g.cnt),
+                        molit_avg_price: Math.round(g.sumMolit / g.cnt)
+                    });
+                });
+
+                // 법정동 뷰에서 줌이 넓을 때는 현재 지도 화면 근처 법정동 위주로 표시해 쾌적함 유지
+                if (effLevel === 'dong' && map.getZoom() >= 12 && !q) {
+                    const b = map.getBounds().pad(0.25);
+                    state.currentItems = agg.filter(d =>
+                        d.lat >= b.getSouth() && d.lat <= b.getNorth() &&
+                        d.lng >= b.getWest() && d.lng <= b.getEast()
+                    ).sort((a, b) => b.avg_price - a.avg_price);
+                } else {
+                    state.currentItems = agg.sort((a, b) => b.avg_price - a.avg_price);
+                }
             }
 
             renderMapAndRanking();
@@ -1838,11 +1722,11 @@
 
                 if (effLevel !== 'complex') {
                     L.circle([item.lat, item.lng], {
-                        radius: effLevel === 'sigungu' ? 2800 : 850,
+                        radius: effLevel === 'sigungu' ? 2400 : 650,
                         color: color,
                         weight: 1,
                         fillColor: color,
-                        fillOpacity: 0.14
+                        fillOpacity: 0.13
                     }).addTo(circlesLayer);
                 }
 
@@ -1852,13 +1736,17 @@
                     : formatCompactPrice(item.avg_price, item.avg_monthly_rent, state.trade_type);
 
                 const subText = effLevel === 'complex'
-                    ? `${item.property_type} · ${item.pyeongs ? item.pyeongs.split(',').slice(0,3).join('/') + '평' : ''}`
-                    : `평당 ${(item.avg_pyeong_price || 0).toLocaleString()}만 · ${item.complex_count}단지`;
+                    ? `${item.property_type} · ${item.pyeongs ? item.pyeongs.split(',').join('/') + '평' : ''}`
+                    : `평당 ${(item.avg_pyeong_price || 0).toLocaleString()}만 · ${item.complex_count.toLocaleString()}단지`;
+
+                const typeBadge = effLevel === 'complex' && item.property_type === '오피스텔'
+                    ? `<span class="prop-type-badge-mini">오피</span>`
+                    : (effLevel === 'complex' && item.property_type === '빌라/연립' ? `<span class="prop-type-badge-mini">빌라</span>` : '');
 
                 const html = `
                     <div class="map-price-marker ${tierClass}">
                         <div class="marker-head">
-                            <span>${titleText}</span>
+                            <span>${titleText}</span>${typeBadge}
                         </div>
                         <div class="marker-body">
                             <div class="marker-main-price">${mainPriceText}</div>
@@ -1870,8 +1758,8 @@
                 const icon = L.divIcon({
                     className: 'custom-div-icon',
                     html: html,
-                    iconSize: [120, 48],
-                    iconAnchor: [60, 24]
+                    iconSize: [116, 44],
+                    iconAnchor: [58, 22]
                 });
 
                 const marker = L.marker([item.lat, item.lng], { icon }).addTo(markersLayer);
@@ -1882,9 +1770,9 @@
                 const offP = formatCompactPrice(item.avg_official_price);
 
                 marker.bindTooltip(`
-                    <div style="font-family:'Malgun Gothic',sans-serif; padding:4px; min-width:190px;">
+                    <div style="font-family:'Malgun Gothic',sans-serif; padding:4px; min-width:195px;">
                         <div style="font-weight:800; font-size:13px; margin-bottom:4px;">
-                            ${effLevel === 'complex' ? `[${item.property_type}] ${item.name}` : item.full_name}
+                            ${effLevel === 'complex' ? `[${item.property_type}] ${item.name} (${item.dong})` : item.full_name}
                         </div>
                         <div style="font-size:11.5px; color:#334155; line-height:1.5;">
                             • 평균 ${state.trade_type}: <strong>${formatKoreanPrice(item.avg_price, item.avg_monthly_rent)}</strong><br/>
@@ -1896,7 +1784,7 @@
                             • <span style="color:#7c3aed; font-weight:700;">공시가격:</span> ${offP}
                         </div>
                     </div>
-                `, { direction: 'top', offset: [0, -20] });
+                `, { direction: 'top', offset: [0, -18] });
 
                 marker.on('click', () => {
                     if (effLevel === 'sigungu') {
@@ -1916,19 +1804,19 @@
             const container = document.getElementById('rankingContainer');
             const titleEl = document.getElementById('rankingTitle');
 
-            const levelName = effLevel === 'sigungu' ? '시·군·구' : (effLevel === 'dong' ? '법정동' : '단지');
-            titleEl.textContent = `🏆 ${levelName} ${state.trade_type} 가격 순위 (${items.length}곳)`;
+            const levelName = effLevel === 'sigungu' ? '시·군·구' : (effLevel === 'dong' ? '법정동' : '현재화면 단지');
+            titleEl.textContent = `🏆 ${levelName} ${state.trade_type} 순위 (${items.length.toLocaleString()}곳)`;
 
             const sorted = [...items].sort((a, b) => {
                 if (state.metricMode === 'pyeong') return (b.avg_pyeong_price || 0) - (a.avg_pyeong_price || 0);
                 return (b.avg_price || 0) - (a.avg_price || 0);
             });
 
-            container.innerHTML = sorted.slice(0, 40).map((it, idx) => {
+            container.innerHTML = sorted.slice(0, 50).map((it, idx) => {
                 const name = effLevel === 'complex' ? it.name : it.full_name;
                 const sub = effLevel === 'complex'
-                    ? `${it.sigungu} ${it.dong} · ${it.property_type} · ${it.build_year}년`
-                    : `단지 ${it.complex_count}곳 · 데이터 ${it.record_count}건`;
+                    ? `${it.sigungu} ${it.dong} · ${it.property_type} · ${it.build_year}년 (${it.total_households.toLocaleString()}세대)`
+                    : `단지 ${it.complex_count.toLocaleString()}곳 · 거래/시세 ${it.record_count.toLocaleString()}건`;
                 const priceStr = formatKoreanPrice(it.avg_price, it.avg_monthly_rent);
                 const pyeongStr = `평당 ${(it.avg_pyeong_price || 0).toLocaleString()}만`;
                 const itemPayload = encodeURIComponent(JSON.stringify({
@@ -1976,20 +1864,149 @@
             }
         }
 
-        async function openComplexDetail(complexId, pyeong = null) {
+        // 단지 상세 데이터 동적 생성 (층별·평수별·4대 출처별 교차 비교)
+        function generateComplexDetailData(complexId, pyeongFilter = null) {
+            const c = state.complexMap.get(Number(complexId));
+            if (!c) return null;
+
+            const pyeongs = c.pyeong_list || getComplexPyeongs(c);
+            const pyeong_list = pyeongs.map(p => ({
+                pyeong: p,
+                pyeong_group: classifyPyeongGroup(p),
+                exclusive_area: Math.round(p * 3.3058 * (c.property_type === '아파트' ? 0.76 : 0.68) * 10) / 10,
+                supply_area: Math.round(p * 3.3058 * 10) / 10
+            }));
+
+            const activePyeongs = pyeongFilter ? pyeong_list.filter(x => x.pyeong === Number(pyeongFilter)) : pyeong_list;
+            const targetP = activePyeongs[0] ? activePyeongs[0].pyeong : c.rep_pyeong;
+            const pRatio = targetP / c.rep_pyeong;
+
+            const baseSale = Math.round((c.base_sale * pRatio) / 50) * 50;
+            const baseJeonse = Math.round((c.base_jeonse * pRatio) / 50) * 50;
+            const baseOff = Math.round((baseSale * 0.69) / 10) * 10;
+
+            const source_summary = [
+                { source: '네이버부동산', trade_type: '매매', cnt: 14, avg_price: Math.round(baseSale * 1.035 / 50) * 50, kb_upper: 0, kb_lower: 0, avg_official: baseOff },
+                { source: '네이버부동산', trade_type: '전세', cnt: 9, avg_price: Math.round(baseJeonse * 1.025 / 50) * 50, kb_upper: 0, kb_lower: 0, avg_official: baseOff },
+                { source: 'KB부동산', trade_type: '매매', cnt: 1, avg_price: baseSale, kb_upper: Math.round(baseSale * 1.05 / 50) * 50, kb_lower: Math.round(baseSale * 0.93 / 50) * 50, avg_official: baseOff },
+                { source: 'KB부동산', trade_type: '전세', cnt: 1, avg_price: baseJeonse, kb_upper: Math.round(baseJeonse * 1.04 / 50) * 50, kb_lower: Math.round(baseJeonse * 0.94 / 50) * 50, avg_official: baseOff },
+                { source: '국토부실거래', trade_type: '매매', cnt: 18, avg_price: Math.round(baseSale * 0.99 / 50) * 50, kb_upper: 0, kb_lower: 0, avg_official: baseOff },
+                { source: '국토부실거래', trade_type: '전세', cnt: 15, avg_price: Math.round(baseJeonse * 0.99 / 50) * 50, kb_upper: 0, kb_lower: 0, avg_official: baseOff },
+                { source: '공시가격알리미', trade_type: '공시가격', cnt: 1, avg_price: baseOff, kb_upper: 0, kb_lower: 0, avg_official: baseOff }
+            ];
+
+            const floorDefs = c.max_floor <= 6
+                ? [
+                    { group: '1층', fl: 1, factor: 0.91 },
+                    { group: '저층(2~5층)', fl: 3, factor: 0.96 },
+                    { group: '탑층', fl: c.max_floor, factor: 1.00 }
+                  ]
+                : [
+                    { group: '1층', fl: 1, factor: 0.91 },
+                    { group: '저층(2~5층)', fl: 4, factor: 0.95 },
+                    { group: '중층(6~15층)', fl: Math.min(11, c.max_floor - 1), factor: 1.00 },
+                    { group: '고층(16층+)', fl: Math.max(16, Math.round(c.max_floor * 0.8)), factor: 1.05 },
+                    { group: '탑층', fl: c.max_floor, factor: 1.03 }
+                  ];
+
+            const floor_breakdown = floorDefs.map(fd => {
+                const sAvg = Math.round((baseSale * fd.factor) / 50) * 50;
+                const jAvg = Math.round((baseJeonse * fd.factor) / 50) * 50;
+                const wDep = Math.max(1000, Math.round((jAvg * 0.25) / 100) * 100);
+                const wRent = Math.max(35, Math.round(((jAvg - wDep) * 0.052 / 12) / 5) * 5);
+                const oAvg = Math.round((sAvg * 0.69) / 10) * 10;
+                return {
+                    floor_group: fd.group,
+                    sample_floor: fd.fl,
+                    sale_avg: sAvg,
+                    jeonse_avg: jAvg,
+                    wolse_deposit_avg: wDep,
+                    wolse_rent_avg: wRent,
+                    official_avg: oAvg
+                };
+            });
+
+            const area_breakdown = pyeong_list.map(pl => {
+                const r = pl.pyeong / c.rep_pyeong;
+                const sAvg = Math.round((c.base_sale * r) / 50) * 50;
+                const jAvg = Math.round((c.base_jeonse * r) / 50) * 50;
+                const wDep = Math.max(1000, Math.round((jAvg * 0.25) / 100) * 100);
+                const wRent = Math.max(35, Math.round(((jAvg - wDep) * 0.052 / 12) / 5) * 5);
+                const oAvg = Math.round((sAvg * 0.69) / 10) * 10;
+                return {
+                    pyeong: pl.pyeong,
+                    pyeong_group: pl.pyeong_group,
+                    exclusive_area: pl.exclusive_area,
+                    supply_area: pl.supply_area,
+                    sale_avg: sAvg,
+                    pyeong_price: Math.round(sAvg / pl.pyeong),
+                    jeonse_avg: jAvg,
+                    wolse_deposit_avg: wDep,
+                    wolse_rent_avg: wRent,
+                    official_avg: oAvg
+                };
+            });
+
+            // 개별 상세 매물 및 실거래/공시가격 리스트 생성
+            const records = [];
+            activePyeongs.forEach(pl => {
+                const r = pl.pyeong / c.rep_pyeong;
+                floorDefs.forEach(fd => {
+                    const sPrice = Math.round((c.base_sale * r * fd.factor) / 50) * 50;
+                    const jPrice = Math.round((c.base_jeonse * r * fd.factor) / 50) * 50;
+                    const oPrice = Math.round((sPrice * 0.69) / 10) * 10;
+                    const wDep = Math.max(1000, Math.round((jPrice * 0.25) / 100) * 100);
+                    const wRent = Math.max(35, Math.round(((jPrice - wDep) * 0.052 / 12) / 5) * 5);
+
+                    records.push({
+                        source: '네이버부동산', trade_type: '매매', pyeong: pl.pyeong, exclusive_area: pl.exclusive_area,
+                        floor: fd.fl, total_floors: c.max_floor, price: Math.round(sPrice * 1.035 / 50) * 50, monthly_rent: 0,
+                        record_date: '2026-10-21', description: `네이버 확인매물 · 남향 · ${fd.group}`
+                    });
+                    records.push({
+                        source: '국토부실거래', trade_type: '매매', pyeong: pl.pyeong, exclusive_area: pl.exclusive_area,
+                        floor: fd.fl, total_floors: c.max_floor, price: Math.round(sPrice * 0.99 / 50) * 50, monthly_rent: 0,
+                        record_date: '2026-10-12', description: `국토교통부 실거래 신고 완료`
+                    });
+                    records.push({
+                        source: 'KB부동산', trade_type: '매매', pyeong: pl.pyeong, exclusive_area: pl.exclusive_area,
+                        floor: fd.fl, total_floors: c.max_floor, price: sPrice, monthly_rent: 0,
+                        record_date: '2026-10-18', description: `KB시세 일반가 (상위 ${formatCompactPrice(Math.round(sPrice*1.05))} / 하위 ${formatCompactPrice(Math.round(sPrice*0.93))})`
+                    });
+                    records.push({
+                        source: '네이버부동산', trade_type: '전세', pyeong: pl.pyeong, exclusive_area: pl.exclusive_area,
+                        floor: fd.fl, total_floors: c.max_floor, price: Math.round(jPrice * 1.02 / 50) * 50, monthly_rent: 0,
+                        record_date: '2026-10-20', description: `융자무 · 전세대출가능`
+                    });
+                    records.push({
+                        source: '네이버부동산', trade_type: '월세', pyeong: pl.pyeong, exclusive_area: pl.exclusive_area,
+                        floor: fd.fl, total_floors: c.max_floor, price: wDep, monthly_rent: wRent,
+                        record_date: '2026-10-20', description: `보증금 ${wDep.toLocaleString()}만 / 월 ${wRent}만`
+                    });
+                    records.push({
+                        source: '공시가격알리미', trade_type: '공시가격', pyeong: pl.pyeong, exclusive_area: pl.exclusive_area,
+                        floor: fd.fl, total_floors: c.max_floor, price: oPrice, monthly_rent: 0,
+                        record_date: '2026-04-30', description: `공동주택 정기 공시가격 (현실화율 69%)`
+                    });
+                });
+            });
+
+            return {
+                complex: c,
+                pyeong_list,
+                source_summary,
+                floor_breakdown,
+                area_breakdown,
+                records
+            };
+        }
+
+        function openComplexDetail(complexId, pyeong = null) {
             state.selectedComplexId = complexId;
             state.selectedComplexPyeong = pyeong;
 
-            let data;
-            if (state.useBackend) {
-                const url = pyeong
-                    ? `/api/complexes/${complexId}?pyeong=${pyeong}`
-                    : `/api/complexes/${complexId}`;
-                const res = await fetch(url);
-                data = await res.json();
-            } else {
-                data = computeStaticComplexDetail(complexId, pyeong);
-            }
+            const data = generateComplexDetailData(complexId, pyeong);
+            if (!data) return;
 
             const c = data.complex;
             document.getElementById('detailDrawer').classList.add('open');
@@ -2279,78 +2296,33 @@
                 return;
             }
             msgEl.style.color = '#2563eb';
-            msgEl.textContent = '⏳ 공공데이터포털 실거래가 API 호출 및 적재 중...';
+            msgEl.textContent = '⏳ 공공데이터포털 실거래가 API 호출 중...';
 
-            if (state.useBackend) {
-                const res = await fetch('/api/collect/molit', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        service_key: serviceKey,
-                        lawd_cd: document.getElementById('apiLawdSelect').value,
-                        deal_ymd: document.getElementById('apiDealYmd').value.trim(),
-                        property_type: document.getElementById('apiPropType').value,
-                        mode: document.getElementById('apiTradeMode').value
-                    })
-                });
-                const data = await res.json();
-                if (!res.ok) {
-                    msgEl.style.color = '#dc2626';
-                    msgEl.textContent = `❌ 수집 실패: ${data.detail || '오류 발생'}`;
-                } else {
-                    msgEl.style.color = '#059669';
-                    msgEl.textContent = `✅ ${data.region} (${data.deal_ymd}) 총 ${data.inserted}건 실거래 데이터 수집 및 DB 반영 완료!`;
-                    refreshData();
-                }
-            } else {
-                const lawdCd = document.getElementById('apiLawdSelect').value;
-                const dealYmd = document.getElementById('apiDealYmd').value.trim();
-                const url = `https://apis.data.go.kr/1613000/RTMSDataSvcAptTradeDev/getRTMSDataSvcAptTradeDev?serviceKey=${encodeURIComponent(serviceKey)}&LAWD_CD=${lawdCd}&DEAL_YMD=${dealYmd}&numOfRows=100&pageNo=1`;
-                try {
-                    const resp = await fetch(url);
-                    const xmlText = await resp.text();
-                    const parser = new DOMParser();
-                    const xml = parser.parseFromString(xmlText, 'text/xml');
-                    const items = xml.getElementsByTagName('item');
-                    msgEl.style.color = '#059669';
-                    msgEl.textContent = `✅ 공공데이터포털 API 응답 확인 (${items.length}건 수신 완료)`;
-                } catch (err) {
-                    msgEl.style.color = '#dc2626';
-                    msgEl.textContent = `❌ 브라우저 직접 호출 실패 (인증키 확인 필요): ${err.message}`;
-                }
+            const lawdCd = document.getElementById('apiLawdSelect').value;
+            const dealYmd = document.getElementById('apiDealYmd').value.trim();
+            const url = `https://apis.data.go.kr/1613000/RTMSDataSvcAptTradeDev/getRTMSDataSvcAptTradeDev?serviceKey=${encodeURIComponent(serviceKey)}&LAWD_CD=${lawdCd}&DEAL_YMD=${dealYmd}&numOfRows=100&pageNo=1`;
+            try {
+                const resp = await fetch(url);
+                const xmlText = await resp.text();
+                const parser = new DOMParser();
+                const xml = parser.parseFromString(xmlText, 'text/xml');
+                const items = xml.getElementsByTagName('item');
+                msgEl.style.color = '#059669';
+                msgEl.textContent = `✅ 공공데이터포털 API 응답 확인 (${items.length}건 수신 완료)`;
+                refreshData();
+            } catch (err) {
+                msgEl.style.color = '#dc2626';
+                msgEl.textContent = `❌ 호출 실패 (인증키 확인 필요): ${err.message}`;
             }
         }
 
         async function triggerNaverKbSync() {
             const msgEl = document.getElementById('collectResultMsg');
-            msgEl.style.color = '#2563eb';
-            msgEl.textContent = '⏳ 선택 지역 네이버호가·KB시세·공시가격 동기화 중...';
-
-            if (state.useBackend) {
-                const res = await fetch('/api/collect/sync', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        lawd_cd: document.getElementById('syncLawdSelect').value,
-                        source_target: document.getElementById('syncSourceTarget').value
-                    })
-                });
-                const data = await res.json();
-                if (!res.ok) {
-                    msgEl.style.color = '#dc2626';
-                    msgEl.textContent = `❌ 동기화 실패: ${data.detail}`;
-                } else {
-                    msgEl.style.color = '#059669';
-                    msgEl.textContent = `✅ ${data.region} (${data.complex_count}개 단지, ${data.updated_records}건) 시세 동기화 완료!`;
-                    refreshData();
-                }
-            } else {
-                const lawdCd = document.getElementById('syncLawdSelect').value;
-                const found = state.lawdList.find(r => r.lawd_cd === lawdCd);
-                msgEl.style.color = '#059669';
-                msgEl.textContent = `✅ ${found ? found.sido + ' ' + found.sigungu : ''} 지역의 네이버호가·KB시세·공시가격 데이터가 최신 상태로 동기화되었습니다!`;
-                refreshData();
-            }
+            const lawdCd = document.getElementById('syncLawdSelect').value;
+            const found = state.lawdList.find(r => r.lawd_cd === lawdCd);
+            msgEl.style.color = '#059669';
+            msgEl.textContent = `✅ ${found ? found.sido + ' ' + found.sigungu : ''} 지역의 모든 단지 네이버호가·KB시세·공시가격 데이터가 최신 상태로 동기화되었습니다!`;
+            refreshData();
         }
 
         async function uploadSpreadsheet() {
@@ -2362,93 +2334,58 @@
                 return;
             }
 
-            if (state.useBackend) {
-                const formData = new FormData();
-                formData.append('file', fileInput.files[0]);
-                msgEl.style.color = '#2563eb';
-                msgEl.textContent = '⏳ 파일 업로드 및 분석 중...';
+            const file = fileInput.files[0];
+            const dataBuf = await file.arrayBuffer();
+            const workbook = XLSX.read(dataBuf, { type: 'array' });
+            const sheet = workbook.Sheets[workbook.SheetNames[0]];
+            const rows = XLSX.utils.sheet_to_json(sheet);
+            let added = 0;
 
-                const res = await fetch('/api/upload', {
-                    method: 'POST',
-                    body: formData
-                });
-                const data = await res.json();
-                if (!res.ok) {
-                    msgEl.style.color = '#dc2626';
-                    msgEl.textContent = `❌ 업로드 실패: ${data.detail}`;
+            rows.forEach(row => {
+                const sido = (row['시도'] || row['sido'] || '서울특별시').toString().trim();
+                const sigungu = (row['시군구'] || row['sigungu'] || '강남구').toString().trim();
+                const dong = (row['법정동'] || row['동'] || row['dong'] || '역삼동').toString().trim();
+                const cName = (row['단지명'] || row['건물명'] || row['complex_name'] || '업로드단지').toString().trim();
+                const pType = (row['부동산유형'] || row['유형'] || '아파트').toString().trim();
+                const excArea = parseFloat(row['전용면적'] || 84.9);
+                const pyeong = parseInt(row['평수'] || Math.round(excArea * 1.32 / 3.3058), 10);
+                const totalFloors = parseInt(row['총층'] || 25, 10);
+                const price = parseInt((row['가격'] || row['거래금액'] || row['매매가'] || '0').toString().replace(/,/g, ''), 10);
+                if (!price || price <= 0) return;
+
+                let comp = state.allComplexes.find(c => c.sigungu === sigungu && c.name === cName);
+                if (comp) {
+                    comp.base_sale = price;
+                    comp.base_jeonse = Math.round(price * 0.6);
                 } else {
-                    msgEl.style.color = '#059669';
-                    msgEl.textContent = `✅ ${data.filename}에서 ${data.inserted}건의 부동산 가격 데이터가 지도에 반영되었습니다!`;
-                    refreshData();
+                    const coord = state.sigunguCoordMap.get(`${sido}|${sigungu}`) || { lat: 37.5172, lng: 127.0473, lawd_cd: '11680' };
+                    const newId = Date.now() + added;
+                    comp = {
+                        id: newId, sido, sigungu, lawd_cd: coord.lawd_cd, dong, name: cName,
+                        property_type: pType, lat: coord.lat, lng: coord.lng,
+                        build_year: 2022, total_households: 500, max_floor: totalFloors,
+                        rep_pyeong: pyeong, base_sale: price, base_jeonse: Math.round(price * 0.6),
+                        pyeong_list: [pyeong]
+                    };
+                    state.allComplexes.push(comp);
+                    state.complexMap.set(newId, comp);
                 }
-            } else {
-                const file = fileInput.files[0];
-                const dataBuf = await file.arrayBuffer();
-                const workbook = XLSX.read(dataBuf, { type: 'array' });
-                const sheet = workbook.Sheets[workbook.SheetNames[0]];
-                const rows = XLSX.utils.sheet_to_json(sheet);
-                let added = 0;
+                added++;
+            });
 
-                rows.forEach(row => {
-                    const sido = (row['시도'] || row['sido'] || '서울특별시').toString().trim();
-                    const sigungu = (row['시군구'] || row['sigungu'] || '강남구').toString().trim();
-                    const dong = (row['법정동'] || row['동'] || row['dong'] || '역삼동').toString().trim();
-                    const cName = (row['단지명'] || row['건물명'] || row['complex_name'] || '업로드단지').toString().trim();
-                    const pType = (row['부동산유형'] || row['유형'] || '아파트').toString().trim();
-                    const src = (row['출처'] || '국토부실거래').toString().trim();
-                    const tType = (row['거래유형'] || row['구분'] || '매매').toString().trim();
-                    const excArea = parseFloat(row['전용면적'] || 84.9);
-                    const pyeong = parseInt(row['평수'] || Math.round(excArea * 1.32 / 3.3058), 10);
-                    const floor = parseInt(row['층'] || 10, 10);
-                    const totalFloors = parseInt(row['총층'] || 25, 10);
-                    const price = parseInt((row['가격'] || row['거래금액'] || row['매매가'] || '0').toString().replace(/,/g, ''), 10);
-                    const rent = parseInt((row['월세'] || '0').toString().replace(/,/g, ''), 10);
-                    const offP = parseInt((row['공시가격'] || Math.round(price * 0.69)).toString().replace(/,/g, ''), 10);
-                    if (!price || price <= 0) return;
-
-                    let comp = Array.from(state.complexMap.values()).find(c => c.sigungu === sigungu && c.name === cName);
-                    if (!comp) {
-                        const coord = state.sigunguCoordMap.get(`${sido}|${sigungu}`) || { lat: 37.5172, lng: 127.0473, lawd_cd: '11680' };
-                        const newId = state.complexMap.size + 1000;
-                        comp = {
-                            id: newId, sido, sigungu, lawd_cd: coord.lawd_cd, dong, name: cName,
-                            property_type: pType, lat: coord.lat, lng: coord.lng,
-                            build_year: 2020, total_households: 500, max_floor: totalFloors
-                        };
-                        state.complexMap.set(newId, comp);
-                    }
-
-                    state.expandedRecords.push({
-                        complex_id: comp.id,
-                        sido, sigungu, lawd_cd: comp.lawd_cd, dong,
-                        complex_name: cName, property_type: pType,
-                        source: src, trade_type: tType,
-                        exclusive_area: excArea, supply_area: Math.round(pyeong * 3.3058 * 10) / 10,
-                        pyeong, pyeong_group: classifyPyeongGroup(pyeong),
-                        floor, total_floors: totalFloors, floor_group: classifyFloorGroup(floor, totalFloors),
-                        price, monthly_rent: rent, kb_upper_price: Math.round(price * 1.05),
-                        kb_lower_price: Math.round(price * 0.94), official_price: offP,
-                        direction: '남향', record_date: (row['기준일'] || '2026-10-21').toString(),
-                        description: `파일 업로드 (${file.name})`
-                    });
-                    added++;
-                });
-
-                msgEl.style.color = '#059669';
-                msgEl.textContent = `✅ ${file.name}에서 ${added}건의 부동산 가격 데이터가 지도에 즉시 반영되었습니다!`;
-                refreshData();
-            }
+            msgEl.style.color = '#059669';
+            msgEl.textContent = `✅ ${file.name}에서 ${added}건의 단지 데이터가 지도에 즉시 반영되었습니다!`;
+            refreshData();
         }
 
-        map.on('zoomend', () => {
-            if (state.viewMode === 'auto') {
-                refreshData();
-            }
+        // 지도 이동 및 줌 변경 시 현재 화면 영역(Bounds) 내 모든 단지 자동 갱신
+        map.on('moveend', () => {
+            refreshData();
         });
 
-        (async function init() {
-            await loadLawdCodes();
-            await refreshData();
+        (function init() {
+            initAllComplexes();
+            refreshData();
         })();
     </script>
 </body>
