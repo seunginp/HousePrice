@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>서울·경기 부동산 통합 가격 비교 지도 (14,580개 전 단지 · 공시가격·실거래·네이버·KB)</title>
+    <title>서울·경기 부동산 통합 가격 비교 & 청약 지도 (14,580단지 · 5년 추이 · 700개 청약)</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         :root {
@@ -15,6 +15,7 @@
             --kb-yellow: #f59e0b;
             --molit-blue: #2563eb;
             --official-purple: #7c3aed;
+            --sub-pink: #db2777;
             --border-color: #e2e8f0;
             --text-main: #0f172a;
             --text-sub: #475569;
@@ -89,6 +90,10 @@
             color: #fff;
             box-shadow: 0 1px 4px rgba(37, 99, 235, 0.3);
         }
+        .zoom-mode-btn.sub-mode.active {
+            background: linear-gradient(135deg, #db2777, #9d174d);
+            color: #fff;
+        }
         .stat-chip {
             font-size: 12px;
             color: var(--text-sub);
@@ -105,22 +110,22 @@
 
         .top-actions {
             display: flex;
-            gap: 8px;
+            gap: 7px;
             flex-wrap: wrap;
         }
         .action-btn {
             border: 1px solid var(--border-color);
             background: var(--panel-bg);
-            padding: 9px 14px;
+            padding: 8px 13px;
             border-radius: 10px;
-            font-size: 12.5px;
+            font-size: 12px;
             font-weight: 700;
             color: var(--text-main);
             cursor: pointer;
             box-shadow: 0 4px 14px rgba(15, 23, 42, 0.1);
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 5px;
             transition: all 0.15s;
         }
         .action-btn:hover {
@@ -129,6 +134,11 @@
         }
         .action-btn.primary {
             background: linear-gradient(135deg, #2563eb, #1d4ed8);
+            color: #fff;
+            border: none;
+        }
+        .action-btn.sub-highlight {
+            background: linear-gradient(135deg, #db2777, #be185d);
             color: #fff;
             border: none;
         }
@@ -151,7 +161,7 @@
             overflow: hidden;
         }
         .brand-header {
-            padding: 15px 16px 12px;
+            padding: 14px 16px 11px;
             background: linear-gradient(135deg, #0f172a, #1e293b);
             color: #fff;
         }
@@ -171,6 +181,18 @@
             align-items: center;
             flex-wrap: wrap;
         }
+        .daily-badge {
+            margin-top: 6px;
+            padding: 4px 8px;
+            border-radius: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            font-size: 10.5px;
+            color: #38bdf8;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
         .source-dot {
             display: inline-block;
             width: 7px;
@@ -185,8 +207,8 @@
             flex: 1;
         }
         .filter-section {
-            margin-bottom: 13px;
-            padding-bottom: 11px;
+            margin-bottom: 12px;
+            padding-bottom: 10px;
             border-bottom: 1px solid #f1f5f9;
         }
         .filter-label {
@@ -327,6 +349,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            flex-shrink: 0;
         }
         .rank-item:nth-child(1) .rank-num { background: #fee2e2; color: #dc2626; }
         .rank-item:nth-child(2) .rank-num { background: #ffedd5; color: #ea580c; }
@@ -342,6 +365,7 @@
         }
         .rank-right {
             text-align: right;
+            flex-shrink: 0;
         }
         .rank-price {
             font-size: 13px;
@@ -422,8 +446,9 @@
         .tier-mid .marker-head { background: linear-gradient(135deg, #2563eb, #1d4ed8); }
         .tier-low { border-color: #047857; }
         .tier-low .marker-head { background: linear-gradient(135deg, #10b981, #047857); }
+        .tier-sub { border-color: #be185d; box-shadow: 0 4px 16px rgba(219, 39, 119, 0.38); }
+        .tier-sub .marker-head { background: linear-gradient(135deg, #db2777, #9d174d); }
 
-        /* 오피스텔은 보라/남색 테두리 포인트 표시 가능 */
         .prop-type-badge-mini {
             font-size: 9px;
             padding: 0 3px;
@@ -437,7 +462,7 @@
             top: 70px;
             right: 16px;
             bottom: 16px;
-            width: 440px;
+            width: 470px;
             max-width: calc(100vw - 32px);
             background: var(--panel-bg);
             backdrop-filter: blur(12px);
@@ -467,6 +492,7 @@
             display: flex;
             align-items: center;
             gap: 7px;
+            flex-wrap: wrap;
         }
         .prop-badge {
             font-size: 10.5px;
@@ -520,6 +546,32 @@
             background: var(--primary);
             color: #fff;
             border-color: var(--primary);
+        }
+
+        /* 5년 추이 KPI 그리드 */
+        .trend-kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 6px;
+            margin-bottom: 10px;
+        }
+        .trend-kpi-card {
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 7px 9px;
+            text-align: center;
+        }
+        .trend-kpi-label {
+            font-size: 10px;
+            color: #64748b;
+            font-weight: 700;
+        }
+        .trend-kpi-val {
+            font-size: 12.5px;
+            font-weight: 800;
+            color: #0f172a;
+            margin-top: 2px;
         }
 
         /* 4대 출처 비교 카드 그리드 */
@@ -624,6 +676,21 @@
         .badge-src.국토부실거래 { background: #2563eb; }
         .badge-src.공시가격알리미 { background: #7c3aed; }
 
+        .sub-status-badge {
+            display: inline-block;
+            padding: 2px 7px;
+            border-radius: 5px;
+            font-size: 10.5px;
+            font-weight: 800;
+            color: #fff;
+        }
+        .sub-status-badge.청약중 { background: #dc2626; }
+        .sub-status-badge.분양임박 { background: #db2777; }
+        .sub-status-badge.분양예정 { background: #2563eb; }
+        .sub-status-badge.사전청약마감 { background: #7c3aed; }
+        .sub-status-badge.입주예정 { background: #059669; }
+        .sub-status-badge.청약마감 { background: #64748b; }
+
         /* 하단 비교함 플로팅 바 */
         .compare-bar {
             position: absolute;
@@ -684,9 +751,9 @@
         .modal-card {
             background: #fff;
             border-radius: 16px;
-            width: 860px;
-            max-width: 95vw;
-            max-height: 88vh;
+            width: 960px;
+            max-width: 96vw;
+            max-height: 90vh;
             display: flex;
             flex-direction: column;
             overflow: hidden;
@@ -765,18 +832,19 @@
 
     <div id="map"></div>
 
-    <!-- 상단 바: 줌 레벨 모드 전환 & 요약 지표 & 국내 지도 전환 & 데이터 수집/비교 버튼 -->
+    <!-- 상단 바: 줌 레벨 모드 전환 & 청약 모드 & 국내 지도 전환 & 데이터 수집/비교 버튼 -->
     <div class="top-bar">
         <div class="status-pills">
             <div class="zoom-mode-group">
                 <button class="zoom-mode-btn active" data-view="auto" onclick="setViewMode('auto')">자동(줌 연동)</button>
-                <button class="zoom-mode-btn" data-view="sigungu" onclick="setViewMode('sigungu')">시·군·구 비교</button>
-                <button class="zoom-mode-btn" data-view="dong" onclick="setViewMode('dong')">법정동 비교</button>
-                <button class="zoom-mode-btn" data-view="complex" onclick="setViewMode('complex')">개별 단지·매물</button>
+                <button class="zoom-mode-btn" data-view="sigungu" onclick="setViewMode('sigungu')">시·군·구</button>
+                <button class="zoom-mode-btn" data-view="dong" onclick="setViewMode('dong')">법정동</button>
+                <button class="zoom-mode-btn" data-view="complex" onclick="setViewMode('complex')">개별 단지</button>
+                <button class="zoom-mode-btn sub-mode" data-view="subscription" onclick="setViewMode('subscription')">🎯 청약·분양지도</button>
             </div>
-            <div class="stat-chip">화면/필터 표시 <strong id="statCount">0</strong>곳 <span id="totalPoolHint" style="color:#64748b; font-size:11px;">(전체 14,580단지)</span></div>
+            <div class="stat-chip">표시 <strong id="statCount">0</strong>곳 <span id="totalPoolHint" style="color:#64748b; font-size:11px;">(전체 14,580단지)</span></div>
             <div class="stat-chip">평균가 <strong id="statAvgPrice">-</strong></div>
-            <div class="stat-chip">평균 평당가 <strong id="statAvgPyeong">-</strong></div>
+            <div class="stat-chip">평당가 <strong id="statAvgPyeong">-</strong></div>
         </div>
 
         <div class="top-actions">
@@ -786,14 +854,17 @@
                 <button class="zoom-mode-btn" data-mapstyle="vworld_sat" onclick="setBaseMap('vworld_sat')">🛰️ 위성+도로</button>
                 <button class="zoom-mode-btn" data-mapstyle="vworld_dark" onclick="setBaseMap('vworld_dark')">🌙 야간지도</button>
             </div>
+            <button class="action-btn sub-highlight" onclick="openSubscriptionModal()">
+                🗓️ 청약·분양 일정 전체보기 (<span id="subTotalCountBadge">700</span>)
+            </button>
             <button class="action-btn" onclick="toggleMetricMode()" id="metricModeBtn">
-                <span>🔄 표시기준:</span> <strong id="metricModeLabel">총액(억/만)</strong>
+                <span>🔄 기준:</span> <strong id="metricModeLabel">총액(억/만)</strong>
             </button>
             <button class="action-btn" onclick="openCompareModal()">
-                📊 다중 비교함 (<span id="compareCountBadge">0</span>)
+                📊 비교함 (<span id="compareCountBadge">0</span>)
             </button>
             <button class="action-btn primary" onclick="openCollectModal()">
-                ⚡ API 수집 · 엑셀 업로드
+                ⚡ API 수집 · 업로드
             </button>
         </div>
     </div>
@@ -802,13 +873,18 @@
     <div class="left-panel">
         <div class="brand-header">
             <div class="brand-title">
-                <span>🏙️ 서울·경기 전 단지 부동산 비교 지도</span>
+                <span>🏙️ 서울·경기 부동산 & 청약 통합 지도</span>
             </div>
             <div class="brand-sub">
-                <span><i class="source-dot" style="background:#7c3aed;"></i>공시가격알리미</span>
+                <span><i class="source-dot" style="background:#7c3aed;"></i>공시가격</span>
                 <span><i class="source-dot" style="background:#2563eb;"></i>국토부실거래</span>
-                <span><i class="source-dot" style="background:#03c75a;"></i>네이버부동산</span>
-                <span><i class="source-dot" style="background:#f59e0b;"></i>KB부동산</span>
+                <span><i class="source-dot" style="background:#03c75a;"></i>네이버호가</span>
+                <span><i class="source-dot" style="background:#f59e0b;"></i>KB시세</span>
+                <span><i class="source-dot" style="background:#db2777;"></i>청약·5년추이</span>
+            </div>
+            <div class="daily-badge">
+                <span>🔄 매일 06:00 자동 업데이트</span>
+                <span id="lastUpdatedLabel">기준: 2026-10-22</span>
             </div>
         </div>
 
@@ -817,10 +893,10 @@
             <div class="filter-section">
                 <div class="filter-label">
                     <span>📍 서울·경기 지역 선택 및 단지 검색</span>
-                    <span class="hint">14,580개 실제 단지</span>
+                    <span class="hint">14,580단지 + 700청약</span>
                 </div>
                 <div class="search-row">
-                    <input type="text" id="searchInput" class="search-input" placeholder="구/시, 법정동, 아파트/오피스텔명 검색..." oninput="debounceRefresh()" />
+                    <input type="text" id="searchInput" class="search-input" placeholder="구/시, 법정동, 아파트/오피스텔/청약단지 검색..." oninput="debounceRefresh()" />
                 </div>
                 <div class="region-selects">
                     <select id="sidoSelect" class="select-box" onchange="onSidoChange()">
@@ -928,7 +1004,7 @@
         </div>
     </div>
 
-    <!-- 우측 단지 상세 분석 드로어 (출처별·층별·평수별 교차 비교) -->
+    <!-- 우측 단지 상세 분석 드로어 (5년 가격변화 추이 그래프 + 청약정보 + 출처별·층별·평수별 교차 비교) -->
     <div class="right-drawer" id="detailDrawer">
         <div class="drawer-header">
             <div>
@@ -945,9 +1021,40 @@
         </div>
 
         <div class="drawer-body">
+            <!-- 청약/분양 단지인 경우 표시되는 특별 카드 -->
+            <div id="drawerSubAlertBox" class="detail-box" style="display:none; background:linear-gradient(135deg,#fdf2f8,#fce7f3); border-color:#f472b6;"></div>
+
             <!-- 평수 선택 탭 -->
-            <div class="filter-label"><span>📐 평형(평수/전용면적) 선택</span></div>
+            <div class="filter-label"><span>📐 평형(평수/전용면적) 선택 (5년 그래프 및 층별 시세 연동)</span></div>
             <div class="pyeong-tabs" id="drawerPyeongTabs"></div>
+
+            <!-- 📈 최근 5년간(2021~2026) 가격변화 추이 그래프 -->
+            <div class="detail-box" style="background:#fff; border-color:#cbd5e1;">
+                <div class="detail-box-title">
+                    <span>📈 최근 5년간(2021~2026) 가격변화 추이 그래프</span>
+                    <span id="chartSyncBadge" style="font-size:10px; color:#2563eb; font-weight:700;">매매·전세·공시가격 동시 비교</span>
+                </div>
+                <div class="trend-kpi-grid" id="drawerTrendKpis"></div>
+                <div style="position:relative; height:210px; width:100%;">
+                    <canvas id="priceHistoryChart"></canvas>
+                </div>
+                <div style="margin-top:8px;">
+                    <table class="data-table" style="font-size:10.5px;">
+                        <thead>
+                            <tr>
+                                <th>연도</th>
+                                <th>2021년</th>
+                                <th>2022년</th>
+                                <th>2023년</th>
+                                <th>2024년</th>
+                                <th>2025년</th>
+                                <th>2026년(현재)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="drawerYearlyTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
 
             <!-- 4대 부동산 플랫폼/공공데이터 가격 교차 비교 -->
             <div class="filter-label">
@@ -1001,7 +1108,7 @@
                     <span>📋 층·평수·출처별 상세 매물 및 실거래 내역</span>
                     <span id="drawerRecordCount" style="font-size:11px; color:#2563eb;">0건</span>
                 </div>
-                <div style="max-height:260px; overflow-y:auto;">
+                <div style="max-height:240px; overflow-y:auto;">
                     <table class="data-table">
                         <thead>
                             <tr>
@@ -1029,12 +1136,84 @@
 
     <!-- 우측 하단 가격 범례 -->
     <div class="map-legend">
-        <div style="font-weight:800; color:#0f172a;">가격 색상 범례 (매매/전세 기준)</div>
+        <div style="font-weight:800; color:#0f172a;">가격 · 청약 색상 범례</div>
         <div class="legend-row">
-            <span><i class="legend-swatch" style="background:#dc2626;"></i>15억 이상 (고가)</span>
-            <span><i class="legend-swatch" style="background:#ea580c;"></i>9억 ~ 15억</span>
-            <span><i class="legend-swatch" style="background:#2563eb;"></i>5억 ~ 9억</span>
-            <span><i class="legend-swatch" style="background:#10b981;"></i>5억 미만</span>
+            <span><i class="legend-swatch" style="background:#dc2626;"></i>15억+</span>
+            <span><i class="legend-swatch" style="background:#ea580c;"></i>9~15억</span>
+            <span><i class="legend-swatch" style="background:#2563eb;"></i>5~9억</span>
+            <span><i class="legend-swatch" style="background:#10b981;"></i>5억미만</span>
+            <span><i class="legend-swatch" style="background:#db2777;"></i>청약·분양단지</span>
+        </div>
+    </div>
+
+    <!-- 모달 0: 서울·경기 청약/분양 예정 전체 정보 모달 (700개 단지) -->
+    <div class="modal-backdrop" id="subscriptionModal">
+        <div class="modal-card" style="width:1060px;">
+            <div class="modal-header" style="background:linear-gradient(135deg,#831843,#be185d);">
+                <div>
+                    <div style="font-size:16.5px; font-weight:800;">🗓️ 서울·경기 청약 및 분양 예정 단지 종합 정보 (총 700곳)</div>
+                    <div style="font-size:11.5px; color:#fbcfe8; margin-top:2px;">청약접수중 · 분양임박 · 분양예정(재건축/재개발/3기신도시) · 사전청약 · 입주예정 분양권 및 예상 안전마진 비교</div>
+                </div>
+                <button class="close-btn" onclick="closeSubscriptionModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <!-- 청약 필터 바 -->
+                <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; align-items:center; background:#f8fafc; padding:10px 12px; border-radius:10px; border:1px solid #e2e8f0;">
+                    <select id="subSidoFilter" class="select-box" onchange="renderSubscriptionTable()">
+                        <option value="전체">서울 + 경기 전체 (700곳)</option>
+                        <option value="서울특별시">서울특별시 (207곳)</option>
+                        <option value="경기도">경기도 (493곳)</option>
+                    </select>
+                    <select id="subStatusFilter" class="select-box" onchange="renderSubscriptionTable()">
+                        <option value="전체">진행상태 전체</option>
+                        <option value="청약중">🔥 청약접수중</option>
+                        <option value="분양임박">⏰ 분양임박 (2026.10~11)</option>
+                        <option value="분양예정">📅 분양예정 (재건축·신규)</option>
+                        <option value="사전청약마감">🏗️ 사전청약 / 본청약대기</option>
+                        <option value="입주예정">🔑 입주예정 (분양권)</option>
+                    </select>
+                    <select id="subTypeFilter" class="select-box" onchange="renderSubscriptionTable()">
+                        <option value="전체">공급유형 전체</option>
+                        <option value="민간분양">민간분양</option>
+                        <option value="공공분양·뉴홈(택지)">공공분양·뉴홈(3기신도시/택지)</option>
+                        <option value="정비사업(재건축·재개발)">정비사업(재건축·재개발)</option>
+                        <option value="분양가상한제">🛡️ 분양가상한제 적용 단지만</option>
+                    </select>
+                    <select id="subSortFilter" class="select-box" onchange="renderSubscriptionTable()">
+                        <option value="status">정렬: 청약임박 + 안전마진순</option>
+                        <option value="margin">정렬: 예상 안전마진(시세차익) 높은순</option>
+                        <option value="households">정렬: 대단지(총세대수)순</option>
+                        <option value="price_asc">정렬: 분양가 낮은순</option>
+                    </select>
+                    <input type="text" id="subSearchInput" class="search-input" style="max-width:210px;" placeholder="지역, 단지명(예: 반포, 고덕, 왕숙)..." oninput="renderSubscriptionTable()" />
+                    <button class="action-btn sub-highlight" style="padding:7px 11px;" onclick="closeSubscriptionModal(); setViewMode('subscription');">
+                        🗺️ 지도에서 청약 단지 모두 보기
+                    </button>
+                </div>
+
+                <!-- 청약 요약 카드 -->
+                <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:12px;" id="subSummaryCards"></div>
+
+                <!-- 청약 목록 테이블 -->
+                <div style="max-height:54vh; overflow-y:auto; border:1px solid #e2e8f0; border-radius:10px;">
+                    <table class="data-table" style="font-size:12px;">
+                        <thead style="position:sticky; top:0; z-index:2;">
+                            <tr>
+                                <th>상태</th>
+                                <th>유형 / 상한제</th>
+                                <th>지역</th>
+                                <th>단지명 (시공사)</th>
+                                <th>총세대 (일반분양)</th>
+                                <th>확정/예상 분양가</th>
+                                <th>주변시세 (예상안전마진)</th>
+                                <th>분양일정 / 입주예정</th>
+                                <th>위치/분석</th>
+                            </tr>
+                        </thead>
+                        <tbody id="subTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -1053,10 +1232,22 @@
     <div class="modal-backdrop" id="collectModal">
         <div class="modal-card" style="width:720px;">
             <div class="modal-header">
-                <div style="font-size:16px; font-weight:800;">⚡ 실시간 부동산 데이터 수집 및 엑셀/CSV 업로드</div>
+                <div style="font-size:16px; font-weight:800;">⚡ 일일 자동 업데이트 설정 · 실시간 API 수집 · 엑셀 업로드</div>
                 <button class="close-btn" onclick="closeCollectModal()">✕</button>
             </div>
             <div class="modal-body">
+                <!-- 일일 자동 업데이트 안내 -->
+                <div class="detail-box" style="background:#eff6ff; border-color:#93c5fd;">
+                    <div class="detail-box-title" style="color:#1d4ed8;">
+                        <span>🔄 GitHub Actions 일일 자동 업데이트 (Daily Cron) 활성화됨</span>
+                        <span style="font-size:11px;">매일 06:00 KST 자동 실행</span>
+                    </div>
+                    <div style="font-size:12px; color:#334155; line-height:1.5;">
+                        • 매일 오전 6시 GitHub Actions 워크플로우(<code>daily-update.yml</code>)가 서울·경기 14,580개 전 단지의 시세 변화와 700개 청약/분양 일정을 자동으로 수집·갱신하여 사이트에 반영합니다.<br/>
+                        • 아래 버튼으로 지금 즉시 브라우저에서 최신 단지 시세를 동기화할 수도 있습니다.
+                    </div>
+                </div>
+
                 <!-- 섹션 A: 국토교통부 / 부동산공시가격 알리미 오픈API -->
                 <div class="detail-box">
                     <div class="detail-box-title">
@@ -1097,7 +1288,7 @@
                 <!-- 섹션 B: 네이버 부동산 호가 & KB 부동산 시세 & 공시가격알리미 동기화 -->
                 <div class="detail-box">
                     <div class="detail-box-title">
-                        <span>2️⃣ 네이버 부동산 호가 · KB 부동산 시세 · 공시가격알리미 동기화</span>
+                        <span>2️⃣ 네이버 부동산 호가 · KB 부동산 시세 · 공시가격알리미 · 청약정보 동기화</span>
                     </div>
                     <div class="form-grid">
                         <div class="form-group">
@@ -1107,7 +1298,7 @@
                         <div class="form-group">
                             <label>대상 플랫폼</label>
                             <select id="syncSourceTarget">
-                                <option value="ALL">전체 (네이버호가 + KB시세 + 공시가격알리미)</option>
+                                <option value="ALL">전체 (네이버호가 + KB시세 + 공시가격 + 청약일정)</option>
                                 <option value="네이버부동산">네이버 부동산 (매매/전세/월세 매물 호가)</option>
                                 <option value="KB부동산">KB 부동산 (일반가/상위가/하위가 시세)</option>
                                 <option value="공시가격알리미">부동산공시가격 알리미 (공동주택 공시가격)</option>
@@ -1115,7 +1306,7 @@
                         </div>
                     </div>
                     <button class="action-btn" style="background:#03c75a; color:#fff; border:none;" onclick="triggerNaverKbSync()">
-                        🔄 선택 지역 네이버·KB·공시가격 시세 동기화
+                        🔄 선택 지역 최신 시세·청약 즉시 동기화
                     </button>
                 </div>
 
@@ -1137,6 +1328,7 @@
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="./data.js"></script>
     <script>
@@ -1161,7 +1353,7 @@
         };
 
         const state = {
-            viewMode: 'auto', // 'auto', 'sigungu', 'dong', 'complex'
+            viewMode: 'auto', // 'auto', 'sigungu', 'dong', 'complex', 'subscription'
             metricMode: 'total', // 'total' (총액), 'pyeong' (평당가)
             sido: '전체',
             sigungu: '전체',
@@ -1174,10 +1366,14 @@
             selectedComplexPyeong: null,
             lawdList: [],
             allComplexes: [],
+            subscriptions: [],
+            subMap: new Map(),
             complexMap: new Map(),
             sigunguCoordMap: new Map(),
             currentItems: [],
-            compareBasket: []
+            compareBasket: [],
+            chartInstance: null,
+            liveChartCache: new Map()
         };
 
         function classifyPyeongGroup(pyeong) {
@@ -1188,39 +1384,37 @@
             return '대형(50평+)';
         }
 
-        // 단지가 가진 평수 옵션 리스트 생성 (예: 대표평수 기준 소/중/대 평형)
         function getComplexPyeongs(c) {
             const rp = c.rep_pyeong;
             if (c.property_type === '오피스텔') {
-                const s1 = Math.max(9, rp - 5);
-                const s2 = rp;
-                const s3 = rp + 7;
-                return Array.from(new Set([s1, s2, s3]));
+                return Array.from(new Set([Math.max(9, rp - 5), rp, rp + 7]));
             } else if (c.property_type === '빌라/연립') {
-                const s1 = Math.max(12, rp - 4);
-                const s2 = rp;
-                const s3 = rp + 5;
-                return Array.from(new Set([s1, s2, s3]));
+                return Array.from(new Set([Math.max(12, rp - 4), rp, rp + 5]));
             } else {
-                const p1 = Math.max(18, rp - 8);
-                const p2 = rp;
-                const p3 = rp + 9;
-                return Array.from(new Set([p1, p2, p3]));
+                return Array.from(new Set([Math.max(18, rp - 8), rp, rp + 9]));
             }
         }
 
-        // 14,580개 단지 인메모리 DB 초기화
         function initAllComplexes() {
             const raw = window.STATIC_REAL_ESTATE_DATA;
             if (!raw) return;
+
+            if (raw.updated_at) {
+                document.getElementById('lastUpdatedLabel').textContent = `기준: ${raw.updated_at.slice(0, 10)}`;
+            }
 
             (raw.regions || []).forEach(r => {
                 state.sigunguCoordMap.set(`${r.sido}|${r.sigungu}`, { lat: r.lat, lng: r.lng, lawd_cd: r.lawd_cd });
             });
 
+            state.subscriptions = raw.subscriptions || [];
+            state.subscriptions.forEach(s => {
+                state.subMap.set(s.id, s);
+            });
+            document.getElementById('subTotalCountBadge').textContent = state.subscriptions.length.toLocaleString();
+
             const list = raw.complexes_v2 || [];
             state.allComplexes = list.map(arr => {
-                // [id, sido_idx, sigungu, dong, name, prop_idx, lat, lng, build_year, households, max_floor, rep_pyeong, sale_avg, jeonse_avg, lawd_cd]
                 const c = {
                     id: arr[0],
                     sido: SIDO_NAMES[arr[1]] || '경기도',
@@ -1245,7 +1439,6 @@
 
             document.getElementById('totalPoolHint').textContent = `(전체 ${state.allComplexes.length.toLocaleString()}단지)`;
 
-            // 시군구 목록 구성 (실제 단지 데이터에 존재하는 모든 시군구 포함)
             const sgMap = new Map();
             (raw.regions || []).forEach(r => {
                 sgMap.set(`${r.sido}|${r.sigungu}`, {
@@ -1269,7 +1462,6 @@
             populateModalLawdDropdowns();
         }
 
-        // 현재 필터(거래유형, 출처, 부동산유형, 평수, 층수, 검색어)에 따른 단지별 실효 가격 계산
         function evaluateComplexUnderFilters(c, minP, maxP, minF, maxF, q) {
             if (state.sido !== '전체' && c.sido !== state.sido) return null;
             if (state.sigungu !== '전체' && c.sigungu !== state.sigungu) return null;
@@ -1282,13 +1474,11 @@
                 if (!matched) return null;
             }
 
-            // 층수 필터 확인
             if (state.floor_group === '고층(16층+)' && c.max_floor < 16) return null;
             if (state.floor_group === '중층(6~15층)' && c.max_floor < 6) return null;
             if (!isNaN(minF) && c.max_floor < minF) return null;
             if (!isNaN(maxF) && maxF < 1) return null;
 
-            // 평수 필터 확인
             let targetPyeong = c.rep_pyeong;
             if (state.pyeong_group !== '전체' || !isNaN(minP) || !isNaN(maxP)) {
                 const matchingP = c.pyeong_list.find(p => {
@@ -1361,7 +1551,6 @@
             };
         }
 
-        // 지도 초기화 (국토교통부 VWorld 국내 한글지도 기본 적용)
         const map = L.map('map', {
             zoomControl: false,
             minZoom: 7,
@@ -1590,13 +1779,48 @@
             const maxF = parseInt(document.getElementById('maxFloorInput').value, 10);
             const q = document.getElementById('searchInput').value.trim().toLowerCase();
 
-            // 1. 전체 14,580개 단지 중 현재 필터 통과 단지 계산
+            // 청약·분양 전용 지도 뷰인 경우
+            if (effLevel === 'subscription') {
+                const subItems = state.subscriptions.filter(s => {
+                    if (state.sido !== '전체' && s.sido !== state.sido) return false;
+                    if (state.sigungu !== '전체' && s.sigungu !== state.sigungu) return false;
+                    if (q) {
+                        const m = s.name.toLowerCase().includes(q) || s.sigungu.toLowerCase().includes(q) || s.dong.toLowerCase().includes(q);
+                        if (!m) return false;
+                    }
+                    return true;
+                }).map(s => ({
+                    id: s.id,
+                    sido: s.sido,
+                    sigungu: s.sigungu,
+                    dong: s.dong,
+                    name: s.name,
+                    property_type: s.status,
+                    is_subscription: true,
+                    sub_info: s,
+                    lat: s.lat,
+                    lng: s.lng,
+                    build_year: s.schedule,
+                    total_households: s.households,
+                    avg_price: s.offer_price,
+                    avg_pyeong_price: s.offer_pyeong_price,
+                    avg_monthly_rent: 0,
+                    avg_official_price: Math.round(s.offer_price * 0.7),
+                    naver_price: s.market_price,
+                    kb_price: s.market_price,
+                    molit_price: s.offer_price,
+                    pyeongs: String(s.rep_pyeong)
+                }));
+                state.currentItems = subItems.slice(0, 400);
+                renderMapAndRanking();
+                return;
+            }
+
             const filteredComplexes = [];
             const bounds = map.getBounds().pad(0.15);
 
             for (let i = 0; i < state.allComplexes.length; i++) {
                 const c = state.allComplexes[i];
-                // 개별 단지 뷰에서는 현재 지도 화면 영역(Bounds) 내 단지만 고속 필터링 (단, 검색어가 있을 때는 전체 검색 허용)
                 if (effLevel === 'complex' && !q) {
                     if (c.lat < bounds.getSouth() || c.lat > bounds.getNorth() ||
                         c.lng < bounds.getWest() || c.lng > bounds.getEast()) {
@@ -1610,10 +1834,8 @@
             }
 
             if (effLevel === 'complex') {
-                // 화면 내 모든 아파트·오피스텔·빌라 표시 (최대 500개까지 동시 렌더링)
                 state.currentItems = filteredComplexes.slice(0, 500);
             } else {
-                // 시군구 또는 법정동 집계
                 const groups = new Map();
                 for (let i = 0; i < filteredComplexes.length; i++) {
                     const item = filteredComplexes[i];
@@ -1683,7 +1905,6 @@
                     });
                 });
 
-                // 법정동 뷰에서 줌이 넓을 때는 현재 지도 화면 근처 법정동 위주로 표시해 쾌적함 유지
                 if (effLevel === 'dong' && map.getZoom() >= 12 && !q) {
                     const b = map.getBounds().pad(0.25);
                     state.currentItems = agg.filter(d =>
@@ -1717,10 +1938,12 @@
             }
 
             items.forEach(item => {
-                const tierClass = getPriceTierClass(item.avg_price);
-                const color = getPriceColor(item.avg_price);
+                const isSub = !!item.is_subscription || state.subMap.has(item.id);
+                const subObj = item.sub_info || state.subMap.get(item.id);
+                const tierClass = effLevel === 'subscription' ? 'tier-sub' : getPriceTierClass(item.avg_price);
+                const color = effLevel === 'subscription' ? '#db2777' : getPriceColor(item.avg_price);
 
-                if (effLevel !== 'complex') {
+                if (effLevel !== 'complex' && effLevel !== 'subscription') {
                     L.circle([item.lat, item.lng], {
                         radius: effLevel === 'sigungu' ? 2400 : 650,
                         color: color,
@@ -1730,18 +1953,28 @@
                     }).addTo(circlesLayer);
                 }
 
-                const titleText = effLevel === 'complex' ? item.name : item.label;
+                const titleText = (effLevel === 'complex' || effLevel === 'subscription') ? item.name : item.label;
                 const mainPriceText = state.metricMode === 'pyeong'
                     ? `${(item.avg_pyeong_price || 0).toLocaleString()}만/평`
                     : formatCompactPrice(item.avg_price, item.avg_monthly_rent, state.trade_type);
 
-                const subText = effLevel === 'complex'
-                    ? `${item.property_type} · ${item.pyeongs ? item.pyeongs.split(',').join('/') + '평' : ''}`
-                    : `평당 ${(item.avg_pyeong_price || 0).toLocaleString()}만 · ${item.complex_count.toLocaleString()}단지`;
+                let subText = '';
+                if (effLevel === 'subscription' && subObj) {
+                    subText = `${subObj.status} · 마진+${formatCompactPrice(subObj.safety_margin)}`;
+                } else if (effLevel === 'complex') {
+                    subText = `${item.property_type} · ${item.pyeongs ? item.pyeongs.split(',').join('/') + '평' : ''}`;
+                } else {
+                    subText = `평당 ${(item.avg_pyeong_price || 0).toLocaleString()}만 · ${item.complex_count.toLocaleString()}단지`;
+                }
 
-                const typeBadge = effLevel === 'complex' && item.property_type === '오피스텔'
-                    ? `<span class="prop-type-badge-mini">오피</span>`
-                    : (effLevel === 'complex' && item.property_type === '빌라/연립' ? `<span class="prop-type-badge-mini">빌라</span>` : '');
+                let typeBadge = '';
+                if (effLevel === 'subscription' && subObj) {
+                    typeBadge = `<span class="prop-type-badge-mini">${subObj.status}</span>`;
+                } else if (effLevel === 'complex') {
+                    if (isSub) typeBadge = `<span class="prop-type-badge-mini" style="background:#db2777;">청약</span>`;
+                    else if (item.property_type === '오피스텔') typeBadge = `<span class="prop-type-badge-mini">오피</span>`;
+                    else if (item.property_type === '빌라/연립') typeBadge = `<span class="prop-type-badge-mini">빌라</span>`;
+                }
 
                 const html = `
                     <div class="map-price-marker ${tierClass}">
@@ -1758,33 +1991,51 @@
                 const icon = L.divIcon({
                     className: 'custom-div-icon',
                     html: html,
-                    iconSize: [116, 44],
-                    iconAnchor: [58, 22]
+                    iconSize: [120, 44],
+                    iconAnchor: [60, 22]
                 });
 
                 const marker = L.marker([item.lat, item.lng], { icon }).addTo(markersLayer);
 
-                const naverP = formatCompactPrice(item.naver_avg_price || item.naver_price || item.avg_price);
-                const kbP = formatCompactPrice(item.kb_avg_price || item.kb_price || item.avg_price);
-                const molitP = formatCompactPrice(item.molit_avg_price || item.molit_price || item.avg_price);
-                const offP = formatCompactPrice(item.avg_official_price);
+                if (effLevel === 'subscription' && subObj) {
+                    marker.bindTooltip(`
+                        <div style="font-family:'Malgun Gothic',sans-serif; padding:4px; min-width:210px;">
+                            <div style="font-weight:800; font-size:13px; color:#be185d; margin-bottom:4px;">
+                                [${subObj.status}] ${subObj.name} (${subObj.dong})
+                            </div>
+                            <div style="font-size:11.5px; color:#334155; line-height:1.5;">
+                                • 유형: <strong>${subObj.supply_type}</strong> ${subObj.price_cap ? '(분양가상한제)' : ''}<br/>
+                                • ${subObj.is_confirmed_price ? '확정분양가' : '예상분양가'}: <strong>${formatKoreanPrice(subObj.offer_price)}</strong> (평당 ${subObj.offer_pyeong_price.toLocaleString()}만)<br/>
+                                • 주변시세: <strong>${formatKoreanPrice(subObj.market_price)}</strong><br/>
+                                • 예상 안전마진: <strong style="color:#dc2626;">+${formatKoreanPrice(subObj.safety_margin)}</strong><br/>
+                                • 분양일정: <strong>${subObj.schedule}</strong> (총 ${subObj.households.toLocaleString()}세대)
+                            </div>
+                        </div>
+                    `, { direction: 'top', offset: [0, -18] });
+                } else {
+                    const naverP = formatCompactPrice(item.naver_avg_price || item.naver_price || item.avg_price);
+                    const kbP = formatCompactPrice(item.kb_avg_price || item.kb_price || item.avg_price);
+                    const molitP = formatCompactPrice(item.molit_avg_price || item.molit_price || item.avg_price);
+                    const offP = formatCompactPrice(item.avg_official_price);
 
-                marker.bindTooltip(`
-                    <div style="font-family:'Malgun Gothic',sans-serif; padding:4px; min-width:195px;">
-                        <div style="font-weight:800; font-size:13px; margin-bottom:4px;">
-                            ${effLevel === 'complex' ? `[${item.property_type}] ${item.name} (${item.dong})` : item.full_name}
+                    marker.bindTooltip(`
+                        <div style="font-family:'Malgun Gothic',sans-serif; padding:4px; min-width:195px;">
+                            <div style="font-weight:800; font-size:13px; margin-bottom:4px;">
+                                ${effLevel === 'complex' ? `[${item.property_type}] ${item.name} (${item.dong})` : item.full_name}
+                            </div>
+                            <div style="font-size:11.5px; color:#334155; line-height:1.5;">
+                                • 평균 ${state.trade_type}: <strong>${formatKoreanPrice(item.avg_price, item.avg_monthly_rent)}</strong><br/>
+                                • 평당가: <strong>${(item.avg_pyeong_price || 0).toLocaleString()}만원/평</strong><br/>
+                                <hr style="border:none; border-top:1px solid #e2e8f0; margin:4px 0;"/>
+                                • <span style="color:#03c75a; font-weight:700;">네이버호가:</span> ${naverP}<br/>
+                                • <span style="color:#d97706; font-weight:700;">KB시세:</span> ${kbP}<br/>
+                                • <span style="color:#2563eb; font-weight:700;">국토부실거래:</span> ${molitP}<br/>
+                                • <span style="color:#7c3aed; font-weight:700;">공시가격:</span> ${offP}
+                                ${effLevel === 'complex' ? '<br/><span style="color:#db2777; font-weight:700;">📈 클릭 시 5년 가격추이 그래프 표시</span>' : ''}
+                            </div>
                         </div>
-                        <div style="font-size:11.5px; color:#334155; line-height:1.5;">
-                            • 평균 ${state.trade_type}: <strong>${formatKoreanPrice(item.avg_price, item.avg_monthly_rent)}</strong><br/>
-                            • 평당가: <strong>${(item.avg_pyeong_price || 0).toLocaleString()}만원/평</strong><br/>
-                            <hr style="border:none; border-top:1px solid #e2e8f0; margin:4px 0;"/>
-                            • <span style="color:#03c75a; font-weight:700;">네이버호가:</span> ${naverP}<br/>
-                            • <span style="color:#d97706; font-weight:700;">KB시세:</span> ${kbP}<br/>
-                            • <span style="color:#2563eb; font-weight:700;">국토부실거래:</span> ${molitP}<br/>
-                            • <span style="color:#7c3aed; font-weight:700;">공시가격:</span> ${offP}
-                        </div>
-                    </div>
-                `, { direction: 'top', offset: [0, -18] });
+                    `, { direction: 'top', offset: [0, -18] });
+                }
 
                 marker.on('click', () => {
                     if (effLevel === 'sigungu') {
@@ -1804,7 +2055,9 @@
             const container = document.getElementById('rankingContainer');
             const titleEl = document.getElementById('rankingTitle');
 
-            const levelName = effLevel === 'sigungu' ? '시·군·구' : (effLevel === 'dong' ? '법정동' : '현재화면 단지');
+            const levelName = effLevel === 'sigungu'
+                ? '시·군·구'
+                : (effLevel === 'dong' ? '법정동' : (effLevel === 'subscription' ? '청약·분양 단지' : '현재화면 단지'));
             titleEl.textContent = `🏆 ${levelName} ${state.trade_type} 순위 (${items.length.toLocaleString()}곳)`;
 
             const sorted = [...items].sort((a, b) => {
@@ -1813,16 +2066,17 @@
             });
 
             container.innerHTML = sorted.slice(0, 50).map((it, idx) => {
-                const name = effLevel === 'complex' ? it.name : it.full_name;
-                const sub = effLevel === 'complex'
-                    ? `${it.sigungu} ${it.dong} · ${it.property_type} · ${it.build_year}년 (${it.total_households.toLocaleString()}세대)`
+                const isComplexLike = (effLevel === 'complex' || effLevel === 'subscription');
+                const name = isComplexLike ? it.name : it.full_name;
+                const sub = isComplexLike
+                    ? `${it.sigungu} ${it.dong} · ${it.property_type} · ${it.build_year} (${it.total_households.toLocaleString()}세대)`
                     : `단지 ${it.complex_count.toLocaleString()}곳 · 거래/시세 ${it.record_count.toLocaleString()}건`;
                 const priceStr = formatKoreanPrice(it.avg_price, it.avg_monthly_rent);
                 const pyeongStr = `평당 ${(it.avg_pyeong_price || 0).toLocaleString()}만`;
                 const itemPayload = encodeURIComponent(JSON.stringify({
-                    key: effLevel === 'complex' ? `comp_${it.id}` : `reg_${it.full_name}`,
+                    key: isComplexLike ? `comp_${it.id}` : `reg_${it.full_name}`,
                     name: name,
-                    type: effLevel === 'complex' ? it.property_type : '지역평균',
+                    type: isComplexLike ? it.property_type : '지역평균',
                     avg_price: it.avg_price,
                     avg_pyeong_price: it.avg_pyeong_price,
                     avg_monthly_rent: it.avg_monthly_rent,
@@ -1854,7 +2108,7 @@
         }
 
         function onRankItemClick(effLevel, complexId, lat, lng) {
-            if (effLevel === 'complex' && complexId) {
+            if ((effLevel === 'complex' || effLevel === 'subscription') && complexId) {
                 map.setView([lat, lng], 16);
                 openComplexDetail(complexId);
             } else if (effLevel === 'sigungu') {
@@ -1864,7 +2118,224 @@
             }
         }
 
-        // 단지 상세 데이터 동적 생성 (층별·평수별·4대 출처별 교차 비교)
+        // 📈 5년간(2021~2026) 가격변화 추이 시계열 생성 및 실데이터 병합
+        function buildFiveYearSeries(c, targetPyeong, liveChartPoints = null) {
+            const pRatio = targetPyeong / c.rep_pyeong;
+            const currentSale = Math.round((c.base_sale * pRatio) / 50) * 50;
+            const currentJeonse = Math.round((c.base_jeonse * pRatio) / 50) * 50;
+
+            // 2021.4Q ~ 2026.4Q (21개 분기 시점)
+            const labels = [
+                '21.10', '22.01', '22.04', '22.07', '22.10',
+                '23.01', '23.04', '23.07', '23.10',
+                '24.01', '24.04', '24.07', '24.10',
+                '25.01', '25.04', '25.07', '25.10',
+                '26.01', '26.04', '26.07', '26.10'
+            ];
+
+            // 지역 특성 반영 (서울 핵심지 vs 서울 일반 vs 경기 핵심 vs 경기 일반)
+            const isCoreSeoul = ['강남구', '서초구', '송파구', '용산구', '성동구', '마포구'].includes(c.sigungu);
+            const isSeoul = c.sido === '서울특별시';
+            const isCoreGyeonggi = ['과천시', '성남시 분당구', '성남시 수정구', '하남시', '수원시 영통구', '광명시', '화성시'].some(k => c.sigungu.includes(k));
+
+            // 2021 고점 -> 2022.10~2023.04 금리인상 조정 저점 -> 2024~2026 반등 및 상승 곡선
+            let curve;
+            if (isCoreSeoul) {
+                curve = [
+                    0.88, 0.89, 0.90, 0.87, 0.81,
+                    0.76, 0.78, 0.82, 0.84,
+                    0.85, 0.87, 0.91, 0.93,
+                    0.94, 0.96, 0.97, 0.98,
+                    0.99, 0.995, 1.00, 1.00
+                ];
+            } else if (isSeoul || isCoreGyeonggi) {
+                curve = [
+                    0.94, 0.95, 0.94, 0.90, 0.82,
+                    0.75, 0.76, 0.79, 0.81,
+                    0.82, 0.84, 0.87, 0.89,
+                    0.91, 0.93, 0.95, 0.96,
+                    0.97, 0.98, 0.99, 1.00
+                ];
+            } else {
+                curve = [
+                    0.98, 0.99, 0.97, 0.92, 0.83,
+                    0.76, 0.75, 0.77, 0.79,
+                    0.80, 0.82, 0.84, 0.86,
+                    0.89, 0.91, 0.93, 0.95,
+                    0.97, 0.98, 0.99, 1.00
+                ];
+            }
+
+            // 단지 고유 미세 변동 시드 반영
+            const seedShift = ((c.id % 13) - 6) * 0.003;
+            const saleSeries = labels.map((lb, idx) => {
+                const factor = idx === labels.length - 1 ? 1.0 : Math.max(0.65, curve[idx] + seedShift * Math.sin(idx));
+                return Math.round((currentSale * factor) / 50) * 50;
+            });
+
+            // 만약 실시간 API에서 가져온 월별 평당가(liveChartPoints)가 있으면 2023.10 ~ 2026.10 구간에 실제 데이터 반영!
+            if (liveChartPoints && liveChartPoints.length > 0) {
+                // 실데이터는 평당가 기준이므로, 최신 시점을 현재 시세에 맞춰 상대 변동률로 환산
+                const lastPt = liveChartPoints[liveChartPoints.length - 1];
+                const lastPrice = (lastPt && lastPt.price) ? lastPt.price : 0;
+                const dateMap = new Map();
+                liveChartPoints.forEach(pt => {
+                    // pt.date: '2024-01-01', pt.price: 평당 만원
+                    const ym = pt.date.slice(2, 7).replace('-', '.');
+                    if (lastPrice > 0 && pt.price > 0) {
+                        dateMap.set(ym, Math.round((currentSale * pt.price / lastPrice) / 50) * 50);
+                    }
+                });
+                labels.forEach((lb, idx) => {
+                    if (dateMap.has(lb) && dateMap.get(lb) > 0) {
+                        saleSeries[idx] = dateMap.get(lb);
+                    }
+                });
+            }
+
+            const jeonseRatioBase = currentJeonse / Math.max(1, currentSale);
+            const jeonseSeries = saleSeries.map((sp, idx) => {
+                const jMod = 1.0 + Math.cos(idx * 0.6) * 0.025;
+                return Math.round((sp * jeonseRatioBase * jMod) / 50) * 50;
+            });
+            jeonseSeries[jeonseSeries.length - 1] = currentJeonse;
+
+            const officialSeries = saleSeries.map((sp, idx) => {
+                // 2022년 공시가격 현실화율 상승(0.73), 2023년 이후 0.69 반영
+                const offRatio = (idx >= 1 && idx <= 4) ? 0.72 : 0.69;
+                return Math.round((sp * offRatio) / 10) * 10;
+            });
+
+            return { labels, saleSeries, jeonseSeries, officialSeries };
+        }
+
+        function renderFiveYearChart(c, targetPyeong, liveChartPoints = null) {
+            const { labels, saleSeries, jeonseSeries, officialSeries } = buildFiveYearSeries(c, targetPyeong, liveChartPoints);
+
+            const startSale = saleSeries[0];
+            const endSale = saleSeries[saleSeries.length - 1];
+            const diffManwon = endSale - startSale;
+            const diffPct = ((diffManwon / Math.max(1, startSale)) * 100).toFixed(1);
+            const maxSale = Math.max(...saleSeries);
+            const minSale = Math.min(...saleSeries);
+            const maxIdx = saleSeries.indexOf(maxSale);
+            const minIdx = saleSeries.indexOf(minSale);
+
+            const sign = diffManwon >= 0 ? '+' : '-';
+            const diffColor = diffManwon >= 0 ? '#dc2626' : '#2563eb';
+
+            document.getElementById('drawerTrendKpis').innerHTML = `
+                <div class="trend-kpi-card">
+                    <div class="trend-kpi-label">5년 전(21.10) 대비</div>
+                    <div class="trend-kpi-val" style="color:${diffColor};">
+                        ${sign}${formatCompactPrice(Math.abs(diffManwon))} (${sign}${Math.abs(diffPct)}%)
+                    </div>
+                </div>
+                <div class="trend-kpi-card">
+                    <div class="trend-kpi-label">5년 내 최고가 (20${labels[maxIdx]})</div>
+                    <div class="trend-kpi-val" style="color:#dc2626;">${formatKoreanPrice(maxSale)}</div>
+                </div>
+                <div class="trend-kpi-card">
+                    <div class="trend-kpi-label">5년 내 최저가 (20${labels[minIdx]})</div>
+                    <div class="trend-kpi-val" style="color:#2563eb;">${formatKoreanPrice(minSale)}</div>
+                </div>
+            `;
+
+            // 연도별 요약 테이블 (2021, 2022, 2023, 2024, 2025, 2026)
+            const yearIndices = [0, 4, 8, 12, 16, 20];
+            document.getElementById('drawerYearlyTableBody').innerHTML = `
+                <tr>
+                    <td><strong style="color:#dc2626;">매매가</strong></td>
+                    ${yearIndices.map(i => `<td style="font-weight:700;">${formatCompactPrice(saleSeries[i])}</td>`).join('')}
+                </tr>
+                <tr>
+                    <td><strong style="color:#2563eb;">전세가</strong></td>
+                    ${yearIndices.map(i => `<td>${formatCompactPrice(jeonseSeries[i])}</td>`).join('')}
+                </tr>
+                <tr>
+                    <td><strong style="color:#7c3aed;">공시가격</strong></td>
+                    ${yearIndices.map(i => `<td style="color:#64748b;">${formatCompactPrice(officialSeries[i])}</td>`).join('')}
+                </tr>
+            `;
+
+            const ctx = document.getElementById('priceHistoryChart').getContext('2d');
+            if (state.chartInstance) {
+                state.chartInstance.destroy();
+            }
+
+            state.chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels.map(l => `'${l}`),
+                    datasets: [
+                        {
+                            label: '매매 시세/실거래(억)',
+                            data: saleSeries.map(v => +(v / 10000).toFixed(2)),
+                            borderColor: '#dc2626',
+                            backgroundColor: 'rgba(220, 38, 38, 0.08)',
+                            borderWidth: 2.5,
+                            pointRadius: 2.5,
+                            fill: true,
+                            tension: 0.32
+                        },
+                        {
+                            label: '전세 시세/실거래(억)',
+                            data: jeonseSeries.map(v => +(v / 10000).toFixed(2)),
+                            borderColor: '#2563eb',
+                            backgroundColor: 'transparent',
+                            borderWidth: 2,
+                            pointRadius: 2,
+                            tension: 0.32
+                        },
+                        {
+                            label: '공시가격(억)',
+                            data: officialSeries.map(v => +(v / 10000).toFixed(2)),
+                            borderColor: '#7c3aed',
+                            borderDash: [4, 4],
+                            backgroundColor: 'transparent',
+                            borderWidth: 1.6,
+                            pointRadius: 1.5,
+                            tension: 0.32
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: { boxWidth: 10, font: { size: 10.5, weight: 'bold' } }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const manwon = Math.round(context.parsed.y * 10000);
+                                    return `${context.dataset.label.split('(')[0]}: ${formatKoreanPrice(manwon)}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: { font: { size: 9.5 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 7 },
+                            grid: { display: false }
+                        },
+                        y: {
+                            ticks: {
+                                font: { size: 10 },
+                                callback: function(value) { return value + '억'; }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
         function generateComplexDetailData(complexId, pyeongFilter = null) {
             const c = state.complexMap.get(Number(complexId));
             if (!c) return null;
@@ -1947,7 +2418,6 @@
                 };
             });
 
-            // 개별 상세 매물 및 실거래/공시가격 리스트 생성
             const records = [];
             activePyeongs.forEach(pl => {
                 const r = pl.pyeong / c.rep_pyeong;
@@ -1993,6 +2463,7 @@
 
             return {
                 complex: c,
+                targetPyeong: targetP,
                 pyeong_list,
                 source_summary,
                 floor_breakdown,
@@ -2001,7 +2472,7 @@
             };
         }
 
-        function openComplexDetail(complexId, pyeong = null) {
+        async function openComplexDetail(complexId, pyeong = null) {
             state.selectedComplexId = complexId;
             state.selectedComplexPyeong = pyeong;
 
@@ -2009,11 +2480,39 @@
             if (!data) return;
 
             const c = data.complex;
+            const subInfo = state.subMap.get(Number(complexId));
+
             document.getElementById('detailDrawer').classList.add('open');
             document.getElementById('drawerComplexName').textContent = c.name;
-            document.getElementById('drawerPropBadge').textContent = c.property_type;
+            document.getElementById('drawerPropBadge').textContent = subInfo ? `${c.property_type} · ${subInfo.status}` : c.property_type;
+            document.getElementById('drawerPropBadge').style.background = subInfo ? '#db2777' : '#3b82f6';
             document.getElementById('drawerComplexMeta').textContent =
-                `${c.sido} ${c.sigungu} ${c.dong} · ${c.build_year}년 준공 · ${c.total_households.toLocaleString()}세대 · 최고 ${c.max_floor}층`;
+                `${c.sido} ${c.sigungu} ${c.dong} · ${c.build_year}년 · ${c.total_households.toLocaleString()}세대 · 최고 ${c.max_floor}층`;
+
+            // 청약 단지인 경우 상단 청약 요약 박스 표시
+            const subBox = document.getElementById('drawerSubAlertBox');
+            if (subInfo) {
+                subBox.style.display = 'block';
+                subBox.innerHTML = `
+                    <div class="detail-box-title" style="color:#9d174d; margin-bottom:6px;">
+                        <span>🎯 청약·분양 상세 정보 (${subInfo.supply_type})</span>
+                        <span class="sub-status-badge ${subInfo.status}">${subInfo.status}</span>
+                    </div>
+                    <div style="font-size:12px; color:#1e293b; line-height:1.6;">
+                        • <strong>${subInfo.is_confirmed_price ? '확정 분양가' : '예상 분양가'} (${subInfo.rep_pyeong}평 기준):</strong>
+                          <span style="color:#be185d; font-weight:800;">${formatKoreanPrice(subInfo.offer_price)}</span>
+                          (평당 ${subInfo.offer_pyeong_price.toLocaleString()}만원)<br/>
+                        • <strong>주변 시세 대비 예상 안전마진:</strong>
+                          <span style="color:#dc2626; font-weight:800;">+${formatKoreanPrice(subInfo.safety_margin)}</span>
+                          (주변시세 약 ${formatKoreanPrice(subInfo.market_price)})<br/>
+                        • <strong>청약/분양 일정:</strong> ${subInfo.schedule} · <strong>입주예정:</strong> ${subInfo.move_in}<br/>
+                        • <strong>공급규모:</strong> 총 ${subInfo.households.toLocaleString()}세대 (일반분양 약 ${subInfo.general_supply.toLocaleString()}세대)
+                          · <strong>${subInfo.price_cap ? '🛡️ 분양가상한제 적용' : '비규제/일반분양'}</strong>
+                    </div>
+                `;
+            } else {
+                subBox.style.display = 'none';
+            }
 
             const saleSummary = data.source_summary.find(s => s.trade_type === '매매') || data.source_summary[0] || {};
             const payload = encodeURIComponent(JSON.stringify({
@@ -2031,7 +2530,7 @@
             document.getElementById('drawerAddCompareBtn').onclick = () => addToCompare(payload);
 
             const tabsEl = document.getElementById('drawerPyeongTabs');
-            let tabsHtml = `<button class="pyeong-tab ${!pyeong ? 'active' : ''}" onclick="openComplexDetail(${c.id}, null)">전체 평형</button>`;
+            let tabsHtml = `<button class="pyeong-tab ${!pyeong ? 'active' : ''}" onclick="openComplexDetail(${c.id}, null)">전체 (대표 ${c.rep_pyeong}평)</button>`;
             data.pyeong_list.forEach(p => {
                 const isAct = pyeong === p.pyeong ? 'active' : '';
                 tabsHtml += `
@@ -2041,6 +2540,31 @@
                 `;
             });
             tabsEl.innerHTML = tabsHtml;
+
+            // 5년 가격 추이 차트 즉시 렌더링 + 아파트인 경우 실시간 월별 시세 API 연동
+            const cachedChart = state.liveChartCache.get(c.id);
+            document.getElementById('chartSyncBadge').textContent = cachedChart
+                ? '✅ 최근 3년 실시세 연동 (그 이전은 추정)'
+                : '⏳ 추정 추이 표시 중 · 실시세 불러오는 중';
+            renderFiveYearChart(c, data.targetPyeong, cachedChart || null);
+
+            if (!cachedChart && c.id < 10000000) {
+                fetch(`https://apis.zigbang.com/apt/danjis/${c.id}`)
+                    .then(r => r.ok ? r.json() : null)
+                    .then(dJson => {
+                        if (dJson && dJson.danjiPriceChart && dJson.danjiPriceChart.list) {
+                            const saleEntry = dJson.danjiPriceChart.list.find(x => x.type === 'sale' && x.data && x.data.length > 0);
+                            if (saleEntry) {
+                                state.liveChartCache.set(c.id, saleEntry.data);
+                                if (state.selectedComplexId === c.id) {
+                                    document.getElementById('chartSyncBadge').textContent = '✅ 최근 3년 실시세 연동 (그 이전은 추정)';
+                                    renderFiveYearChart(c, data.targetPyeong, saleEntry.data);
+                                }
+                            }
+                        }
+                    })
+                    .catch(() => {});
+            }
 
             const findSrc = (srcName, tType) => data.source_summary.find(s => s.source === srcName && s.trade_type === tType);
             const naverSale = findSrc('네이버부동산', '매매');
@@ -2157,6 +2681,127 @@
 
         function closeDetailDrawer() {
             document.getElementById('detailDrawer').classList.remove('open');
+        }
+
+        // 🗓️ 청약/분양 모달 제어 및 렌더링
+        function openSubscriptionModal() {
+            document.getElementById('subscriptionModal').classList.add('open');
+            renderSubscriptionTable();
+        }
+
+        function closeSubscriptionModal() {
+            document.getElementById('subscriptionModal').classList.remove('open');
+        }
+
+        function renderSubscriptionTable() {
+            const sidoF = document.getElementById('subSidoFilter').value;
+            const statusF = document.getElementById('subStatusFilter').value;
+            const typeF = document.getElementById('subTypeFilter').value;
+            const sortF = document.getElementById('subSortFilter').value;
+            const q = document.getElementById('subSearchInput').value.trim().toLowerCase();
+
+            let filtered = state.subscriptions.filter(s => {
+                if (sidoF !== '전체' && s.sido !== sidoF) return false;
+                if (statusF !== '전체' && s.status !== statusF) return false;
+                if (typeF === '분양가상한제') {
+                    if (!s.price_cap) return false;
+                } else if (typeF !== '전체' && s.supply_type !== typeF) {
+                    return false;
+                }
+                if (q) {
+                    const m = s.name.toLowerCase().includes(q) ||
+                              s.sigungu.toLowerCase().includes(q) ||
+                              s.dong.toLowerCase().includes(q) ||
+                              s.supply_type.toLowerCase().includes(q);
+                    if (!m) return false;
+                }
+                return true;
+            });
+
+            const statusOrder = { '청약중': 0, '분양임박': 1, '분양예정': 2, '사전청약마감': 3, '입주예정': 4, '청약마감': 5 };
+            filtered.sort((a, b) => {
+                if (sortF === 'margin') return b.safety_margin - a.safety_margin;
+                if (sortF === 'households') return b.households - a.households;
+                if (sortF === 'price_asc') return a.offer_price - b.offer_price;
+                const stDiff = (statusOrder[a.status] ?? 9) - (statusOrder[b.status] ?? 9);
+                if (stDiff !== 0) return stDiff;
+                return b.safety_margin - a.safety_margin;
+            });
+
+            // 상단 4개 요약 카드 업데이트
+            const activeCnt = filtered.filter(x => x.status === '청약중' || x.status === '분양임박').length;
+            const upcomingCnt = filtered.filter(x => x.status === '분양예정' || x.status === '사전청약마감').length;
+            const capCnt = filtered.filter(x => x.price_cap).length;
+            const avgMargin = filtered.length
+                ? Math.round(filtered.reduce((acc, x) => acc + x.safety_margin, 0) / filtered.length)
+                : 0;
+
+            document.getElementById('subSummaryCards').innerHTML = `
+                <div class="src-card" style="border-left:4px solid #db2777;">
+                    <div class="src-card-head"><span style="color:#db2777;">🔥 청약중 · 분양임박</span></div>
+                    <div class="src-card-price">${activeCnt.toLocaleString()}곳</div>
+                    <div class="src-card-sub">즉시 청약 가능 및 1~2개월 내 모집</div>
+                </div>
+                <div class="src-card" style="border-left:4px solid #2563eb;">
+                    <div class="src-card-head"><span style="color:#2563eb;">📅 분양예정 · 사전청약</span></div>
+                    <div class="src-card-price">${upcomingCnt.toLocaleString()}곳</div>
+                    <div class="src-card-sub">재건축·재개발·3기신도시 본청약</div>
+                </div>
+                <div class="src-card" style="border-left:4px solid #059669;">
+                    <div class="src-card-head"><span style="color:#059669;">🛡️ 분양가상한제 적용</span></div>
+                    <div class="src-card-price">${capCnt.toLocaleString()}곳</div>
+                    <div class="src-card-sub">강남3구·용산·공공택지 로또청약</div>
+                </div>
+                <div class="src-card" style="border-left:4px solid #dc2626;">
+                    <div class="src-card-head"><span style="color:#dc2626;">💰 평균 예상 안전마진</span></div>
+                    <div class="src-card-price">+${formatKoreanPrice(avgMargin)}</div>
+                    <div class="src-card-sub">주변 시세 대비 예상 시세차익</div>
+                </div>
+            `;
+
+            document.getElementById('subTableBody').innerHTML = filtered.slice(0, 250).map(s => `
+                <tr>
+                    <td><span class="sub-status-badge ${s.status}">${s.status}</span></td>
+                    <td>
+                        <div style="font-weight:700;">${s.supply_type}</div>
+                        ${s.price_cap ? '<span style="font-size:10px; color:#059669; font-weight:800;">🛡️ 분양가상한제</span>' : '<span style="font-size:10px; color:#64748b;">일반분양</span>'}
+                    </td>
+                    <td><strong>${s.sido === '서울특별시' ? '[서울]' : '[경기]'} ${s.sigungu}</strong><br/><span style="color:#64748b; font-size:10.5px;">${s.dong}</span></td>
+                    <td>
+                        <div style="font-weight:800; color:#0f172a; font-size:12.5px;">${s.name}</div>
+                        <div style="font-size:10.5px; color:#64748b;">${s.brand} · 대표 ${s.rep_pyeong}평</div>
+                    </td>
+                    <td>
+                        <strong>총 ${s.households.toLocaleString()}세대</strong><br/>
+                        <span style="font-size:10.5px; color:#2563eb;">일반분양 약 ${s.general_supply.toLocaleString()}세대</span>
+                    </td>
+                    <td>
+                        <strong style="color:#be185d;">${formatKoreanPrice(s.offer_price)}</strong>
+                        <span style="font-size:10px; color:#64748b;">(${s.is_confirmed_price ? '확정' : '예상'})</span><br/>
+                        <span style="font-size:10.5px; color:#475569;">평당 ${s.offer_pyeong_price.toLocaleString()}만</span>
+                    </td>
+                    <td>
+                        <div style="font-weight:800; color:#dc2626;">+${formatKoreanPrice(s.safety_margin)}</div>
+                        <div style="font-size:10.5px; color:#64748b;">주변시세 ${formatCompactPrice(s.market_price)}</div>
+                    </td>
+                    <td>
+                        <div style="font-weight:700; color:#1e293b;">분양: ${s.schedule}</div>
+                        <div style="font-size:10.5px; color:#64748b;">입주: ${s.move_in}</div>
+                    </td>
+                    <td>
+                        <button class="compare-add-mini" style="padding:5px 8px; background:#2563eb; color:#fff; border:none;" onclick="focusSubscriptionOnMap(${s.id}, ${s.lat}, ${s.lng})">
+                            📍 지도·5년분석
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function focusSubscriptionOnMap(subId, lat, lng) {
+            closeSubscriptionModal();
+            setViewMode('subscription');
+            map.setView([lat, lng], 15);
+            openComplexDetail(subId);
         }
 
         function addToCompare(encodedPayload) {
@@ -2321,7 +2966,7 @@
             const lawdCd = document.getElementById('syncLawdSelect').value;
             const found = state.lawdList.find(r => r.lawd_cd === lawdCd);
             msgEl.style.color = '#059669';
-            msgEl.textContent = `✅ ${found ? found.sido + ' ' + found.sigungu : ''} 지역의 모든 단지 네이버호가·KB시세·공시가격 데이터가 최신 상태로 동기화되었습니다!`;
+            msgEl.textContent = `✅ ${found ? found.sido + ' ' + found.sigungu : ''} 지역의 모든 단지 네이버호가·KB시세·공시가격 및 청약 데이터가 최신 상태로 동기화되었습니다!`;
             refreshData();
         }
 
@@ -2378,7 +3023,6 @@
             refreshData();
         }
 
-        // 지도 이동 및 줌 변경 시 현재 화면 영역(Bounds) 내 모든 단지 자동 갱신
         map.on('moveend', () => {
             refreshData();
         });

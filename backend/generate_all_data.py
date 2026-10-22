@@ -1,19 +1,24 @@
 # -*- coding: utf-8 -*-
 import json
 import random
+from datetime import datetime
 from regions_data import SEOUL_GYEONGGI_REGIONS
 
-# 지역별 기본 평당가 룩업 (시세 미등록 단지 및 오피스텔 추정용)
+# 지역별 기본 평당가 룩업
 BASE_PYEONG_PRICE = {}
 LAWD_BY_SIGUNGU = {}
 for r in SEOUL_GYEONGGI_REGIONS:
     BASE_PYEONG_PRICE[(r["sido"], r["sigungu"])] = r["base_pyeong_price"]
     LAWD_BY_SIGUNGU[(r["sido"], r["sigungu"])] = r["lawd_cd"]
-    # 시 단위 기본값도 등록 (예: 수원시 -> 수원시 영통구 등)
     city_prefix = r["sigungu"].split()[0]
     if (r["sido"], city_prefix) not in BASE_PYEONG_PRICE:
         BASE_PYEONG_PRICE[(r["sido"], city_prefix)] = r["base_pyeong_price"]
         LAWD_BY_SIGUNGU[(r["sido"], city_prefix)] = r["lawd_cd"]
+
+# 분양가상한제 적용 지역 (강남구, 서초구, 송파구, 용산구 및 공공택지)
+PRICE_CAP_SIGUNGU = {"강남구", "서초구", "송파구", "용산구", "과천시", "하남시", "성남시 수정구"}
+PUBLIC_KEYWORDS = ["A-", "B-", "S-", "BL", "블록", "블럭", "토지임대", "신혼희망", "공공", "자연앤", "왕숙", "교산", "창릉", "대장", "고덕", "거모", "당수", "법조타운", "역세권"]
+REDEV_KEYWORDS = ["재건축", "재개발", "정비", "구역", "리모델링", "가로주택"]
 
 
 def normalize_sido_sigungu(sido_raw: str, gugun_raw: str):
@@ -22,7 +27,6 @@ def normalize_sido_sigungu(sido_raw: str, gugun_raw: str):
     if sido_raw.startswith("서울"):
         return "서울특별시", gugun_raw
     if sido_raw.startswith("경기"):
-        # 예: sido="경기도 수원시", gugun="영통구" -> ("경기도", "수원시 영통구")
         parts = sido_raw.split()
         if len(parts) >= 2:
             city = parts[1]
@@ -31,6 +35,17 @@ def normalize_sido_sigungu(sido_raw: str, gugun_raw: str):
             return "경기도", city
         return "경기도", gugun_raw
     return sido_raw, gugun_raw
+
+
+def format_yyyymm(raw_val, default_val="2026.12 예정"):
+    if not raw_val:
+        return default_val
+    s = str(raw_val).strip()
+    if len(s) == 8:
+        return f"{s[:4]}-{s[4:6]}-{s[6:8]}"
+    elif len(s) == 6:
+        return f"{s[:4]}-{s[4:6]}"
+    return s
 
 
 def build_all_data():
@@ -45,9 +60,9 @@ def build_all_data():
     # [id, sido_idx(0:서울,1:경기), sigungu, dong, name, prop_type_idx(0:아파트,1:오피스텔,2:빌라/연립),
     #  lat, lng, build_year, households, max_floor, rep_pyeong, sale_avg, jeonse_avg, lawd_cd]
     compact_complexes = []
+    subscriptions = []
     seen_coords_name = set()
 
-    # 1. Process 11,967 apartments & villas from location/v3
     for item in apts:
         zid = item.get("id")
         name = (item.get("name") or "").strip()
@@ -99,16 +114,21 @@ def build_all_data():
         price_obj = item.get("price") or {}
         sales_obj = price_obj.get("sales") or {}
         rent_obj = price_obj.get("rent") or {}
+        offer_obj = price_obj.get("offer") or {}
 
         sale_avg = int(sales_obj.get("avg") or sales_obj.get("min") or 0)
         jeonse_avg = int(rent_obj.get("avg") or rent_obj.get("min") or 0)
+        offer_avg = int(offer_obj.get("avg") or offer_obj.get("min") or 0)
 
         base_p = BASE_PYEONG_PRICE.get((sido, sigungu)) or BASE_PYEONG_PRICE.get((sido, sigungu.split()[0])) or (3400 if sido == "서울특별시" else 2100)
         lawd_cd = LAWD_BY_SIGUNGU.get((sido, sigungu)) or LAWD_BY_SIGUNGU.get((sido, sigungu.split()[0])) or ("11680" if sido == "서울특별시" else "41117")
 
         if sale_avg <= 0:
-            factor = 1.0 if prop_idx == 0 else (0.68 if prop_idx == 1 else 0.58)
-            sale_avg = int(round((base_p * rep_pyeong * factor * random.uniform(0.92, 1.08)) / 100.0) * 100)
+            if offer_avg > 0:
+                sale_avg = offer_avg
+            else:
+                factor = 1.0 if prop_idx == 0 else (0.68 if prop_idx == 1 else 0.58)
+                sale_avg = int(round((base_p * rep_pyeong * factor * random.uniform(0.92, 1.08)) / 100.0) * 100)
         if jeonse_avg <= 0:
             jeonse_avg = int(round((sale_avg * random.uniform(0.56, 0.65)) / 100.0) * 100)
 
@@ -118,7 +138,75 @@ def build_all_data():
             lat, lng, build_year, households, max_floor, rep_pyeong, sale_avg, jeonse_avg, lawd_cd
         ])
 
-    # 2. Process 2,701 officetels from v2/search
+        # 청약/분양 단지 추출 ('청약중', '분양임박', '분양예정', '사전청약마감', '입주예정', '청약마감')
+        svc_status = item.get("서비스구분")
+        if svc_status in ("청약중", "분양임박", "분양예정", "사전청약마감", "입주예정", "청약마감"):
+            is_public = any(k in name for k in PUBLIC_KEYWORDS)
+            is_redev = any(k in name for k in REDEV_KEYWORDS)
+            if is_public:
+                supply_type = "공공분양·뉴홈(택지)"
+            elif is_redev:
+                supply_type = "정비사업(재건축·재개발)"
+            else:
+                supply_type = "민간분양"
+
+            is_price_cap = (sigungu in PRICE_CAP_SIGUNGU) or is_public
+
+            # 주변 33평(또는 대표평형) 시세 추정
+            market_price = int(round((base_p * rep_pyeong * random.uniform(0.98, 1.08)) / 100.0) * 100)
+            if offer_avg > 0:
+                est_offer = offer_avg
+                is_confirmed_price = True
+            else:
+                # 분양가상한제 적용 시 시세 대비 72~82%, 일반 민간분양은 88~96% 수준 예상 분양가 산출
+                discount_ratio = random.uniform(0.72, 0.82) if is_price_cap else random.uniform(0.88, 0.95)
+                est_offer = int(round((market_price * discount_ratio) / 100.0) * 100)
+                is_confirmed_price = False
+
+            if market_price < est_offer:
+                market_price = int(round((est_offer * (1.22 if is_price_cap else 1.08)) / 100.0) * 100)
+
+            safety_margin = max(0, market_price - est_offer)
+            offer_pyeong_price = max(500, int(round(est_offer / rep_pyeong)))
+
+            raw_presale_ym = item.get("분양년월")
+            if svc_status == "청약중":
+                schedule_str = format_yyyymm(raw_presale_ym, "2026-10 (청약접수중)")
+            elif svc_status == "분양임박":
+                schedule_str = format_yyyymm(raw_presale_ym, "2026-11 (분양임박)")
+            elif svc_status == "분양예정":
+                schedule_str = format_yyyymm(raw_presale_ym, "2026 하반기~2027 예정")
+            else:
+                schedule_str = format_yyyymm(raw_presale_ym, "모집완료/입주예정")
+
+            move_in_str = format_yyyymm(item.get("사용승인일"), "2028~2029년 예정")
+            gen_households = max(20, int(round(households * (0.38 if is_redev else 0.65))))
+
+            subscriptions.append({
+                "id": int(zid),
+                "sido": sido,
+                "sigungu": sigungu,
+                "dong": dong,
+                "name": name,
+                "status": svc_status,
+                "supply_type": supply_type,
+                "price_cap": is_price_cap,
+                "lat": lat,
+                "lng": lng,
+                "households": households,
+                "general_supply": gen_households,
+                "rep_pyeong": rep_pyeong,
+                "offer_price": est_offer,
+                "is_confirmed_price": is_confirmed_price,
+                "offer_pyeong_price": offer_pyeong_price,
+                "market_price": market_price,
+                "safety_margin": safety_margin,
+                "schedule": schedule_str,
+                "move_in": move_in_str,
+                "brand": item.get("brand") or ("현대건설" if "디에이치" in name or "힐스테이트" in name else ("삼성물산" if "래미안" in name else ("GS건설" if "자이" in name else "메이저시공사")))
+            })
+
+    # Process 2,701 officetels
     for x in offis:
         oid = int(x.get("id") or 0) + 10000000
         name = (x.get("name") or "").strip()
@@ -166,7 +254,6 @@ def build_all_data():
             lat, lng, build_year, households, max_floor, rep_pyeong, sale_avg, jeonse_avg, lawd_cd
         ])
 
-    # 3. Also ensure every dong has at least 1 villa/연립 if not already present, and add well-known aliases (e.g. 광교더샵레이크파크 오피스텔)
     extra_Gwanggyo = [
         [9900001, 1, "수원시 영통구", "하동", "광교더샵레이크파크", 1, 37.28704, 127.062523, 2016, 647, 40, 24, 86000, 56000, "41117"],
         [9900002, 1, "수원시 영통구", "하동", "광교SK뷰레이크타워(오)", 1, 37.287409, 127.060555, 2019, 565, 41, 25, 89000, 58000, "41117"],
@@ -179,9 +266,16 @@ def build_all_data():
             compact_complexes.append(ex)
             seen_coords_name.add(dedup_key)
 
+    # 청약 우선순위 정렬 (청약중 -> 분양임박 -> 분양예정 -> 사전청약 -> 입주예정)
+    status_order = {"청약중": 0, "분양임박": 1, "분양예정": 2, "사전청약마감": 3, "입주예정": 4, "청약마감": 5}
+    subscriptions.sort(key=lambda x: (status_order.get(x["status"], 9), -x["safety_margin"]))
+
+    today_str = datetime.now().strftime("%Y-%m-%d %H:%M")
     payload = {
+        "updated_at": today_str,
         "regions": SEOUL_GYEONGGI_REGIONS,
-        "complexes_v2": compact_complexes
+        "complexes_v2": compact_complexes,
+        "subscriptions": subscriptions
     }
 
     js_str = "window.STATIC_REAL_ESTATE_DATA = " + json.dumps(payload, ensure_ascii=False, separators=(",", ":")) + ";"
@@ -190,7 +284,7 @@ def build_all_data():
     with open("../data.js", "w", encoding="utf-8") as f:
         f.write(js_str)
 
-    print(f"Total complexes packed into data.js: {len(compact_complexes)}, size: {len(js_str)//1024} KB")
+    print(f"Total complexes: {len(compact_complexes)}, Subscriptions: {len(subscriptions)}, size: {len(js_str)//1024} KB")
 
 
 if __name__ == "__main__":
