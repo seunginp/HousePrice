@@ -252,6 +252,64 @@ class NaverKbSyncService:
         }
 
 
+
+
+class HogangnonoCollector:
+    """
+    호갱노노(Hogangnono) 실시간 시세, 최근 실거래가, 단지정보 수집기
+    """
+    HEADERS = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
+        "Referer": "https://hogangnono.com/"
+    }
+
+    @classmethod
+    def search_apt(cls, query: str):
+        try:
+            url = f"https://hogangnono.com/api/v2/searches/new?query={requests.utils.quote(query)}"
+            r = requests.get(url, headers=cls.HEADERS, timeout=6)
+            if r.status_code == 200:
+                return r.json().get("data", {}).get("matched", {}).get("apt", {}).get("list", [])
+        except Exception:
+            pass
+        return []
+
+    @classmethod
+    def get_apt_detail(cls, apt_id: str):
+        try:
+            url = f"https://hogangnono.com/apt/{apt_id}"
+            r = requests.get(url, headers=cls.HEADERS, timeout=6)
+            if r.status_code != 200:
+                return None
+            html = r.text
+            import re
+            m_floor = re.search(r'최고\s*(\d+)층', html)
+            m_min_floor = re.search(r'최저\s*(\d+)층', html)
+            m_dong = re.search(r'(\d+)개동', html)
+            m_price = re.search(r'최근 실거래 기준[^<]*<\/div><div class="price">([^<]+)<\/div>', html)
+            m_pprice = re.search(r'(\d[\d,]*만원)[^<]*<div[^>]*class="[^"]*e8116ri1"', html)
+
+            pyeongs_raw = re.findall(r'<button[^>]*>(\d+평[A-Z]?)<\/button>', html)
+            clean_p = []
+            for p in pyeongs_raw:
+                if '대' not in p and '비교' not in p and p not in clean_p:
+                    clean_p.append(p)
+            clean_p.sort(key=lambda x: int(re.sub(r'\D', '', x)))
+
+            return {
+                "apt_id": apt_id,
+                "max_floor": int(m_floor.group(1)) if m_floor else None,
+                "min_floor": int(m_min_floor.group(1)) if m_min_floor else None,
+                "total_dong": int(m_dong.group(1)) if m_dong else None,
+                "recent_price": m_price.group(1).strip() if m_price else None,
+                "pyeong_price": m_pprice.group(1) if m_pprice else None,
+                "pyeongs": clean_p,
+                "url": url
+            }
+        except Exception:
+            return None
+
+
 class SpreadsheetImporter:
     """
     엑셀(.xlsx) 또는 CSV(.csv) 파일을 파싱하여 단지 및 가격 데이터로 적재

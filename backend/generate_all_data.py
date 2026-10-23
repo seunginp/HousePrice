@@ -100,11 +100,15 @@ def build_all_data():
         except ValueError:
             build_year = 2015
 
-        max_floor = 25 if prop_idx == 0 else (18 if prop_idx == 1 else 5)
-        if households > 1000:
-            max_floor = 35
-        elif households < 50 and prop_idx == 2:
-            max_floor = 5
+        raw_max_floor = item.get('maxFloor') or item.get('최고층수') or item.get('max_floor')
+        if raw_max_floor and int(raw_max_floor) > 0:
+            max_floor = int(raw_max_floor)
+        else:
+            max_floor = 25 if prop_idx == 0 else (18 if prop_idx == 1 else 5)
+            if households > 1500:
+                max_floor = 35
+            elif households < 50 and prop_idx == 2:
+                max_floor = 5
 
         fl_area = item.get("floorArea") or {}
         rep_pyeong = int(fl_area.get("p") or 0)

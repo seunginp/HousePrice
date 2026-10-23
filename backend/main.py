@@ -9,7 +9,7 @@ from pydantic import BaseModel
 
 from database import init_db, get_connection
 from regions_data import SEOUL_GYEONGGI_REGIONS
-from collectors import MolitPublicDataCollector, NaverKbSyncService, SpreadsheetImporter
+from collectors import MolitPublicDataCollector, NaverKbSyncService, SpreadsheetImporter, HogangnonoCollector
 
 app = FastAPI(
     title="서울·경기 부동산 통합 비교 지도 API",
@@ -444,6 +444,23 @@ class CollectMolitRequest(BaseModel):
     deal_ymd: str
     property_type: str = "아파트"
     mode: str = "매매"
+
+
+
+@app.get("/api/hogangnono/search")
+def search_hogangnono(query: str):
+    """호갱노노 실시간 단지 검색 API 프록시"""
+    results = HogangnonoCollector.search_apt(query)
+    return {"status": "success", "query": query, "items": results}
+
+
+@app.get("/api/hogangnono/apt/{apt_id}")
+def get_hogangnono_apt(apt_id: str):
+    """호갱노노 단지 상세 정보 (최고층, 평형목록, 실거래시세) 조회"""
+    detail = HogangnonoCollector.get_apt_detail(apt_id)
+    if not detail:
+        raise HTTPException(status_code=404, detail="호갱노노 단지 정보를 찾을 수 없습니다.")
+    return {"status": "success", "data": detail}
 
 
 @app.post("/api/collect/molit")

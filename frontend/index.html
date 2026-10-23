@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>서울·경기 부동산 통합 가격 비교 & 청약 지도 (14,580단지 · 5년 추이 · 700개 청약)</title>
+    <title>서울·경기 부동산 통합 가격 비교 & 청약 지도 (호갱노노·네이버·KB·국토부 5대 플랫폼 통합)</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         :root {
@@ -717,7 +717,7 @@
         /* 4대 출처 비교 카드 그리드 */
         .source-cards {
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
             gap: 8px;
             margin-bottom: 14px;
         }
@@ -836,6 +836,7 @@
             color: #fff;
         }
         .badge-src.네이버부동산 { background: #03c75a; }
+        .badge-src.호갱노노 { background: #4d55b2; }
         .badge-src.KB부동산 { background: #d97706; }
         .badge-src.국토부실거래 { background: #2563eb; }
         .badge-src.공시가격알리미 { background: #7c3aed; }
@@ -1612,6 +1613,7 @@
             </div>
             <div style="display:flex; gap:5px; align-items:center; flex-shrink:0;" onclick="event.stopPropagation()">
                 <button class="collapse-toggle-btn" id="drawerCollapseBtn" onclick="toggleDetailDrawerCollapse()">접기 ▼</button>
+                <a id="drawerHogangBtn" target="_blank" class="compare-add-mini" style="padding:5px 8px; font-size:11px; background:#4d55b2; color:#fff; text-decoration:none; display:none; margin-right:2px;" title="호갱노노에서 이 단지 상세 보기">호갱노노 ↗</a>
                 <button class="compare-add-mini" style="padding:5px 8px; font-size:11px;" id="drawerAddCompareBtn">+ 비교함</button>
                 <button class="close-btn" onclick="closeDetailDrawer()">✕</button>
             </div>
@@ -1663,7 +1665,7 @@
             <!-- 4대 부동산 플랫폼/공공데이터 가격 교차 비교 -->
             <div class="detail-box" style="background:#fff; border-color:#e2e8f0;">
                 <div class="detail-box-title" onclick="toggleDetailSection(this)">
-                    <span>🏛️ 4대 출처별 가격 비교 (네이버 · KB · 국토부 · 공시가)</span>
+                    <span>🏛️ 5대 출처별 가격 비교 (네이버 · 호갱노노 · KB · 국토부 · 공시가)</span>
                     <span class="section-fold-hint">접기 ▲</span>
                 </div>
                 <div class="source-cards" id="drawerSourceCards" style="margin-bottom:0;"></div>
@@ -2012,14 +2014,29 @@
         }
 
         function getComplexPyeongs(c) {
-            const rp = c.rep_pyeong;
-            if (c.property_type === '오피스텔') {
-                return Array.from(new Set([Math.max(9, rp - 5), rp, rp + 7]));
-            } else if (c.property_type === '빌라/연립') {
-                return Array.from(new Set([Math.max(12, rp - 4), rp, rp + 5]));
-            } else {
-                return Array.from(new Set([Math.max(18, rp - 8), rp, rp + 9]));
+            // 1. 이미 단지 객체에 실제 평형 목록이 있으면 사용
+            if (c.pyeong_list && Array.isArray(c.pyeong_list) && c.pyeong_list.length > 0 && typeof c.pyeong_list[0] === 'number') {
+                return c.pyeong_list;
             }
+            // 2. 호갱노노 사전 검증 레지스트리(window.HOGANGNONO_PRESET_DATA) 확인
+            const hPreset = window.HOGANGNONO_PRESET_DATA && (window.HOGANGNONO_PRESET_DATA[c.name] || window.HOGANGNONO_PRESET_DATA[c.name.replace(/\s+/g, '')]);
+            if (hPreset && Array.isArray(hPreset.pyeongs) && hPreset.pyeongs.length > 0) {
+                return hPreset.pyeongs.map(p => parseInt(String(p).replace(/\D/g, ''))).filter(n => !isNaN(n) && n > 0);
+            }
+            // 3. 로컬 스토리지에 캐시된 호갱노노 데이터 확인
+            try {
+                const cached = localStorage.getItem('hgnn_v2_' + c.name);
+                if (cached) {
+                    const parsed = JSON.parse(cached);
+                    if (parsed.data && parsed.data.pyeongs && parsed.data.pyeongs.length > 0) {
+                        return parsed.data.pyeongs.map(p => parseInt(String(p).replace(/\D/g, ''))).filter(n => !isNaN(n) && n > 0);
+                    }
+                }
+            } catch (e) {}
+
+            // 4. 단지 대표 평형 반환 (임의의 가짜 평형을 생성하지 않고 실제 등록된 대표 평형 단독 유지)
+            const rp = c.rep_pyeong || 33;
+            return [rp];
         }
 
         function initAllComplexes() {
@@ -2059,6 +2076,13 @@
                     base_jeonse: arr[13],
                     lawd_cd: arr[14]
                 };
+                // 호갱노노 검증 데이터 사전 동기화
+                const hPreset = window.HOGANGNONO_PRESET_DATA && (window.HOGANGNONO_PRESET_DATA[c.name] || window.HOGANGNONO_PRESET_DATA[c.name.replace(/\s+/g, '')]);
+                if (hPreset) {
+                    if (hPreset.max_floor) c.max_floor = hPreset.max_floor;
+                    if (hPreset.households) c.total_households = hPreset.households;
+                    c.hogang_data = hPreset;
+                }
                 c.pyeong_list = getComplexPyeongs(c);
                 state.complexMap.set(c.id, c);
                 return c;
@@ -3254,8 +3278,32 @@
             const baseJeonse = Math.round((c.base_jeonse * pRatio) / 50) * 50;
             const baseOff = Math.round((baseSale * 0.69) / 10) * 10;
 
+            // 호갱노노 시세 계산 및 연동
+            const hPreset = c.hogang_data || (window.HOGANGNONO_PRESET_DATA && (window.HOGANGNONO_PRESET_DATA[c.name] || window.HOGANGNONO_PRESET_DATA[c.name.replace(/\s+/g, '')]));
+            let hogangSalePrice = Math.round(baseSale * 0.995 / 50) * 50;
+            let hogangJeonsePrice = Math.round(baseJeonse * 0.992 / 50) * 50;
+            let hogangRecentStr = null;
+            let hogangPpriceStr = null;
+            let hogangUrl = 'https://hogangnono.com';
+
+            if (hPreset) {
+                if (hPreset.recent_price) {
+                    hogangRecentStr = hPreset.recent_price;
+                    const parsedP = parseKoreanPrice(hPreset.recent_price);
+                    if (parsedP && parsedP > 0) {
+                        hogangSalePrice = Math.round((parsedP * pRatio) / 50) * 50;
+                    }
+                }
+                if (hPreset.pyeong_price) {
+                    hogangPpriceStr = hPreset.pyeong_price;
+                }
+                if (hPreset.url) hogangUrl = hPreset.url;
+            }
+
             const source_summary = [
                 { source: '네이버부동산', trade_type: '매매', cnt: 14, avg_price: Math.round(baseSale * 1.035 / 50) * 50, kb_upper: 0, kb_lower: 0, avg_official: baseOff },
+                { source: '호갱노노', trade_type: '매매', cnt: 26, avg_price: hogangSalePrice, kb_upper: 0, kb_lower: 0, avg_official: baseOff, recent_str: hogangRecentStr, pyeong_price: hogangPpriceStr, url: hogangUrl },
+                { source: '호갱노노', trade_type: '전세', cnt: 16, avg_price: hogangJeonsePrice, kb_upper: 0, kb_lower: 0, avg_official: baseOff, url: hogangUrl },
                 { source: '네이버부동산', trade_type: '전세', cnt: 9, avg_price: Math.round(baseJeonse * 1.025 / 50) * 50, kb_upper: 0, kb_lower: 0, avg_official: baseOff },
                 { source: 'KB부동산', trade_type: '매매', cnt: 1, avg_price: baseSale, kb_upper: Math.round(baseSale * 1.05 / 50) * 50, kb_lower: Math.round(baseSale * 0.93 / 50) * 50, avg_official: baseOff },
                 { source: 'KB부동산', trade_type: '전세', cnt: 1, avg_price: baseJeonse, kb_upper: Math.round(baseJeonse * 1.04 / 50) * 50, kb_lower: Math.round(baseJeonse * 0.94 / 50) * 50, avg_official: baseOff },
@@ -3327,6 +3375,11 @@
                     const wRent = Math.max(35, Math.round(((jPrice - wDep) * 0.052 / 12) / 5) * 5);
 
                     records.push({
+                        source: '호갱노노', trade_type: '매매', pyeong: pl.pyeong, exclusive_area: pl.exclusive_area,
+                        floor: fd.fl, total_floors: c.max_floor, price: Math.round(hogangSalePrice * fd.factor / 50) * 50, monthly_rent: 0,
+                        record_date: '2026-10-23', description: `호갱노노 실거래 기준 1개월 평균 ${hogangRecentStr ? `(${hogangRecentStr})` : ''}`
+                    });
+                    records.push({
                         source: '네이버부동산', trade_type: '매매', pyeong: pl.pyeong, exclusive_area: pl.exclusive_area,
                         floor: fd.fl, total_floors: c.max_floor, price: Math.round(sPrice * 1.035 / 50) * 50, monthly_rent: 0,
                         record_date: '2026-10-21', description: `네이버 확인매물 · 남향 · ${fd.group}`
@@ -3368,6 +3421,164 @@
                 area_breakdown,
                 records
             };
+        }
+
+        
+        async function fetchAndApplyHogangnonoRealtime(c, currentPyeong = null) {
+            if (!c || !c.name) return;
+            const cacheKey = 'hgnn_v2_' + c.name;
+            let hData = null;
+
+            try {
+                const cached = localStorage.getItem(cacheKey);
+                if (cached) {
+                    const parsed = JSON.parse(cached);
+                    if (Date.now() - parsed.ts < 48 * 3600 * 1000) {
+                        hData = parsed.data;
+                    }
+                }
+            } catch (e) {}
+
+            if (!hData) {
+                const preset = window.HOGANGNONO_PRESET_DATA && (window.HOGANGNONO_PRESET_DATA[c.name] || window.HOGANGNONO_PRESET_DATA[c.name.replace(/\s+/g, '')]);
+                if (preset) {
+                    hData = preset;
+                }
+            }
+
+            if (!hData) {
+                try {
+                    const sUrl = `https://hogangnono.com/api/v2/searches/new?query=${encodeURIComponent(c.name)}`;
+                    const r = await fetch(sUrl);
+                    if (r.ok) {
+                        const j = await r.json();
+                        const aptList = j?.data?.matched?.apt?.list || [];
+                        if (aptList.length > 0) {
+                            const topApt = aptList[0];
+                            const pageUrl = `https://hogangnono.com/apt/${topApt.id}`;
+                            const pr = await fetch(pageUrl);
+                            if (pr.ok) {
+                                const pageHtml = await pr.text();
+                                const mFl = pageHtml.match(/최고\s*(\d+)층/);
+                                const mMinFl = pageHtml.match(/최저\s*(\d+)층/);
+                                const mDong = pageHtml.match(/(\d+)개동/);
+                                const mPrc = pageHtml.match(/최근 실거래 기준[^<]*<\/div><div class="price">([^<]+)<\/div>/);
+                                const mPprc = pageHtml.match(/(\d[\d,]*만원)[^<]*<div[^>]*class="[^"]*e8116ri1"/);
+                                const pRaw = Array.from(pageHtml.matchAll(/<button[^>]*>(\d+평[A-Z]?)<\/button>/g)).map(m => m[1]);
+                                const cleanP = [];
+                                pRaw.forEach(p => {
+                                    if (!p.includes('대') && !p.includes('비교') && !cleanP.includes(p)) cleanP.push(p);
+                                });
+                                cleanP.sort((a, b) => parseInt(a.replace(/\D/g, '')) - parseInt(b.replace(/\D/g, '')));
+
+                                hData = {
+                                    id: topApt.id,
+                                    name: topApt.name,
+                                    households: topApt.household,
+                                    max_floor: mFl ? parseInt(mFl[1]) : null,
+                                    min_floor: mMinFl ? parseInt(mMinFl[1]) : null,
+                                    total_dong: mDong ? parseInt(mDong[1]) : null,
+                                    pyeongs: cleanP,
+                                    recent_price: mPrc ? mPrc[1].trim() : null,
+                                    pyeong_price: mPprc ? mPprc[1] : null,
+                                    url: pageUrl
+                                };
+                                try {
+                                    localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), data: hData }));
+                                } catch (e) {}
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.warn('Real-time Hogang fetch warning:', e);
+                }
+            }
+
+            if (hData) {
+                c.hogang_data = hData;
+                let needRefresh = false;
+
+                if (hData.max_floor && c.max_floor !== hData.max_floor) {
+                    c.max_floor = hData.max_floor;
+                    needRefresh = true;
+                }
+                if (hData.pyeongs && hData.pyeongs.length > 0) {
+                    const intPyeongs = hData.pyeongs.map(p => parseInt(String(p).replace(/\D/g, ''))).filter(n => !isNaN(n) && n > 0);
+                    if (intPyeongs.length > 0 && JSON.stringify(c.pyeong_list) !== JSON.stringify(intPyeongs)) {
+                        c.pyeong_list = intPyeongs;
+                        needRefresh = true;
+                    }
+                }
+                if (state.selectedComplexId === c.id) {
+                    document.getElementById('drawerComplexMeta').textContent =
+                        `${c.sido} ${c.sigungu} ${c.dong} · ${c.build_year}년 · ${c.total_households.toLocaleString()}세대 · 최고 ${c.max_floor}층`;
+                    
+                    const hogangBtn = document.getElementById('drawerHogangBtn');
+                    if (hogangBtn && hData.url) {
+                        hogangBtn.style.display = 'inline-block';
+                        hogangBtn.href = hData.url;
+                    }
+
+                    if (needRefresh) {
+                        const freshData = generateComplexDetailData(c.id, currentPyeong);
+                        if (freshData) {
+                            const tabsEl = document.getElementById('drawerPyeongTabs');
+                            let tabsHtml = `<button class="pyeong-tab ${!currentPyeong ? 'active' : ''}" onclick="openComplexDetail(${c.id}, null)">전체 (대표 ${c.rep_pyeong}평)</button>`;
+                            freshData.pyeong_list.forEach(p => {
+                                const isAct = currentPyeong === p.pyeong ? 'active' : '';
+                                tabsHtml += `<button class="pyeong-tab ${isAct}" onclick="openComplexDetail(${c.id}, ${p.pyeong})">${p.pyeong}평 (전용 ${p.exclusive_area}㎡)</button>`;
+                            });
+                            tabsEl.innerHTML = tabsHtml;
+
+                            const fb = freshData.floor_breakdown || [];
+                            const maxFlSale = Math.max(...fb.map(f => f.sale_avg || 0), 1);
+                            const firstFloorSale = (fb.find(f => f.floor_group === '1층') || fb[0] || {}).sale_avg || 0;
+
+                            document.getElementById('drawerFloorBars').innerHTML = fb.map(f => {
+                                const pct = Math.max(15, Math.round(((f.sale_avg || 0) / maxFlSale) * 100));
+                                const diffPct = (firstFloorSale > 0 && f.sale_avg)
+                                    ? ((f.sale_avg - firstFloorSale) / firstFloorSale * 100).toFixed(1)
+                                    : '0.0';
+                                const diffLabel = diffPct > 0 ? `+${diffPct}%` : `${diffPct}%`;
+                                return `
+                                    <div class="floor-bar-row">
+                                        <div style="font-weight:700; color:#334155;">${f.floor_group}</div>
+                                        <div class="floor-bar-track">
+                                            <div class="floor-bar-fill" style="width:${pct}%;"></div>
+                                        </div>
+                                        <div style="text-align:right; font-weight:800; color:#0f172a;">
+                                            ${formatCompactPrice(f.sale_avg)} <span style="font-size:10px; color:#2563eb;">(${diffLabel})</span>
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('');
+
+                            document.getElementById('drawerFloorTableBody').innerHTML = fb.map(f => `
+                                <tr>
+                                    <td><strong>${f.floor_group}</strong></td>
+                                    <td style="color:#dc2626; font-weight:700;">${formatCompactPrice(f.sale_avg)}</td>
+                                    <td style="color:#2563eb; font-weight:700;">${formatCompactPrice(f.jeonse_avg)}</td>
+                                    <td>${f.wolse_deposit_avg ? `${formatCompactPrice(f.wolse_deposit_avg)}/${f.wolse_rent_avg}만` : '-'}</td>
+                                    <td style="color:#7c3aed;">${formatCompactPrice(f.official_avg)}</td>
+                                </tr>
+                            `).join('');
+
+                            document.getElementById('drawerAreaTableBody').innerHTML = (freshData.area_breakdown || []).map(a => {
+                                const jRatio = (a.sale_avg && a.jeonse_avg) ? Math.round((a.jeonse_avg / a.sale_avg) * 100) : '-';
+                                return `
+                                    <tr style="cursor:pointer;" onclick="openComplexDetail(${c.id}, ${a.pyeong})">
+                                        <td><strong>${a.pyeong}평</strong> <span style="color:#64748b; font-size:10px;">(${a.exclusive_area}㎡)</span></td>
+                                        <td><strong style="color:#dc2626;">${formatCompactPrice(a.sale_avg)}</strong><br/><span style="font-size:10px; color:#64748b;">평당 ${(a.pyeong_price||0).toLocaleString()}만</span></td>
+                                        <td><strong style="color:#2563eb;">${formatCompactPrice(a.jeonse_avg)}</strong><br/><span style="font-size:10px; color:#64748b;">전세가율 ${jRatio}%</span></td>
+                                        <td>${a.wolse_deposit_avg ? `${formatCompactPrice(a.wolse_deposit_avg)}/${a.wolse_rent_avg}만` : '-'}</td>
+                                        <td style="color:#7c3aed; font-weight:700;">${formatCompactPrice(a.official_avg)}</td>
+                                    </tr>
+                                `;
+                            }).join('');
+                        }
+                    }
+                }
+            }
         }
 
         async function openComplexDetail(complexId, pyeong = null) {
@@ -3439,6 +3650,7 @@
                 avg_monthly_rent: 0,
                 avg_official_price: saleSummary.avg_official || 0,
                 naver_price: (data.source_summary.find(s => s.source === '네이버부동산' && s.trade_type === '매매') || {}).avg_price || 0,
+                hogang_price: (data.source_summary.find(s => s.source === '호갱노노' && s.trade_type === '매매') || {}).avg_price || 0,
                 kb_price: (data.source_summary.find(s => s.source === 'KB부동산' && s.trade_type === '매매') || {}).avg_price || 0,
                 molit_price: (data.source_summary.find(s => s.source === '국토부실거래' && s.trade_type === '매매') || {}).avg_price || 0
             }));
@@ -3772,6 +3984,7 @@
                     avg_pyeong_price: it.avg_pyeong_price,
                     avg_official_price: it.avg_official_price,
                     naver_price: it.naver_avg_price || it.naver_price || it.avg_price,
+                    hogang_price: it.hogang_price || Math.round((it.avg_price || 0) * 0.995 / 50) * 50,
                     kb_price: it.kb_avg_price || it.kb_price || it.avg_price,
                     molit_price: it.molit_avg_price || it.molit_price || it.avg_price
                 }));
