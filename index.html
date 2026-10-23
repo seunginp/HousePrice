@@ -35,7 +35,37 @@
         #map {
             width: 100vw;
             height: 100vh;
+            height: 100dvh;
             z-index: 1;
+        }
+
+        /* 공통 접기/펼치기 토글 버튼 */
+        .collapse-toggle-btn {
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            background: rgba(255, 255, 255, 0.14);
+            color: #fff;
+            padding: 4px 9px;
+            border-radius: 7px;
+            font-size: 11px;
+            font-weight: 700;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            white-space: nowrap;
+            transition: all 0.15s;
+            flex-shrink: 0;
+        }
+        .collapse-toggle-btn:hover {
+            background: rgba(255, 255, 255, 0.25);
+        }
+        .collapse-toggle-btn.light {
+            border-color: #cbd5e1;
+            background: #f1f5f9;
+            color: #334155;
+        }
+        .collapse-toggle-btn.light:hover {
+            background: #e2e8f0;
         }
 
         /* 상단 헤더 & 핵심 요약 바 */
@@ -48,12 +78,17 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 10px;
+            gap: 8px;
             pointer-events: none;
             flex-wrap: wrap;
+            transition: left 0.2s ease, top 0.2s ease;
         }
         .top-bar > * {
             pointer-events: auto;
+        }
+        .top-bar.collapsed .top-actions,
+        .top-bar.collapsed .stat-chip {
+            display: none !important;
         }
         .status-pills {
             display: flex;
@@ -62,10 +97,11 @@
             flex-wrap: wrap;
             background: var(--panel-bg);
             backdrop-filter: blur(10px);
-            padding: 8px 14px;
+            padding: 8px 12px;
             border-radius: 12px;
             box-shadow: 0 4px 18px rgba(15, 23, 42, 0.12);
             border: 1px solid var(--border-color);
+            max-width: 100%;
         }
         .zoom-mode-group {
             display: flex;
@@ -73,6 +109,12 @@
             border-radius: 8px;
             padding: 3px;
             gap: 3px;
+            overflow-x: auto;
+            max-width: 100%;
+            scrollbar-width: none;
+        }
+        .zoom-mode-group::-webkit-scrollbar {
+            display: none;
         }
         .zoom-mode-btn {
             border: none;
@@ -84,6 +126,8 @@
             border-radius: 6px;
             cursor: pointer;
             transition: all 0.15s;
+            white-space: nowrap;
+            flex-shrink: 0;
         }
         .zoom-mode-btn.active {
             background: var(--primary);
@@ -102,6 +146,7 @@
             border-radius: 6px;
             border: 1px solid #e2e8f0;
             font-weight: 600;
+            white-space: nowrap;
         }
         .stat-chip strong {
             color: var(--primary);
@@ -112,6 +157,7 @@
             display: flex;
             gap: 7px;
             flex-wrap: wrap;
+            max-width: 100%;
         }
         .action-btn {
             border: 1px solid var(--border-color);
@@ -127,6 +173,7 @@
             align-items: center;
             gap: 5px;
             transition: all 0.15s;
+            white-space: nowrap;
         }
         .action-btn:hover {
             background: #f1f5f9;
@@ -159,19 +206,38 @@
             display: flex;
             flex-direction: column;
             overflow: hidden;
+            transition: box-shadow 0.2s ease;
+        }
+        .left-panel.collapsed {
+            bottom: auto !important;
+            height: auto !important;
+        }
+        .left-panel.collapsed .filter-scroll,
+        .left-panel.collapsed .brand-sub,
+        .left-panel.collapsed .daily-badge {
+            display: none !important;
         }
         .brand-header {
-            padding: 14px 16px 11px;
+            padding: 13px 15px 11px;
             background: linear-gradient(135deg, #0f172a, #1e293b);
             color: #fff;
+            cursor: pointer;
+            user-select: none;
+        }
+        .left-panel.collapsed .brand-header {
+            padding: 11px 15px;
         }
         .brand-title {
-            font-size: 15.5px;
+            font-size: 15px;
             font-weight: 800;
             display: flex;
             align-items: center;
             justify-content: space-between;
+            gap: 8px;
             margin-bottom: 4px;
+        }
+        .left-panel.collapsed .brand-title {
+            margin-bottom: 0;
         }
         .brand-sub {
             font-size: 11px;
@@ -201,10 +267,35 @@
             margin-right: 3px;
         }
 
+        /* 상세 필터 접기/펼치기 아코디언 바 */
+        .filter-accordion-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 11px;
+            margin-bottom: 10px;
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            border-radius: 9px;
+            cursor: pointer;
+            user-select: none;
+            font-size: 12px;
+            font-weight: 800;
+            color: #1e40af;
+            transition: background 0.15s;
+        }
+        .filter-accordion-bar:hover {
+            background: #dbeafe;
+        }
+        #detailedFiltersWrap.collapsed {
+            display: none;
+        }
+
         .filter-scroll {
             padding: 12px 14px;
             overflow-y: auto;
             flex: 1;
+            -webkit-overflow-scrolling: touch;
         }
         .filter-section {
             margin-bottom: 12px;
@@ -456,7 +547,7 @@
             background: rgba(255,255,255,0.25);
         }
 
-        /* 우측 단지 상세 드로어 */
+        /* 우측 단지 상세 드로어 (모바일에서는 바텀시트) */
         .right-drawer {
             position: absolute;
             top: 70px;
@@ -473,20 +564,65 @@
             display: none;
             flex-direction: column;
             overflow: hidden;
+            transition: height 0.22s ease, max-height 0.22s ease, top 0.22s ease;
         }
         .right-drawer.open {
             display: flex;
         }
+        .right-drawer.collapsed {
+            bottom: 16px;
+            top: auto !important;
+            height: auto !important;
+            max-height: none !important;
+        }
+        .right-drawer.collapsed .drawer-body {
+            display: none !important;
+        }
+        .drawer-drag-handle {
+            width: 100%;
+            padding: 7px 0 3px;
+            background: #0f172a;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            user-select: none;
+        }
+        .drawer-drag-bar {
+            width: 42px;
+            height: 4px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.35);
+        }
         .drawer-header {
-            padding: 15px 18px;
+            padding: 8px 16px 13px;
             background: #0f172a;
             color: #fff;
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
+            gap: 10px;
+            cursor: pointer;
+            user-select: none;
+        }
+        .drawer-collapsed-summary {
+            display: none;
+            padding: 9px 16px;
+            background: #1e293b;
+            color: #e2e8f0;
+            font-size: 12px;
+            font-weight: 700;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            cursor: pointer;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+        }
+        .right-drawer.collapsed .drawer-collapsed-summary {
+            display: flex;
         }
         .drawer-title {
-            font-size: 17px;
+            font-size: 16.5px;
             font-weight: 800;
             margin-bottom: 4px;
             display: flex;
@@ -507,20 +643,22 @@
             color: #94a3b8;
         }
         .close-btn {
-            background: rgba(255,255,255,0.12);
+            background: rgba(255,255,255,0.14);
             border: none;
             color: #fff;
             width: 28px;
             height: 28px;
             border-radius: 7px;
             cursor: pointer;
-            font-size: 15px;
+            font-size: 14px;
             font-weight: 700;
+            flex-shrink: 0;
         }
         .drawer-body {
             padding: 14px 16px;
             overflow-y: auto;
             flex: 1;
+            -webkit-overflow-scrolling: touch;
         }
 
         /* 평형 탭 */
@@ -531,16 +669,18 @@
             padding-bottom: 8px;
             margin-bottom: 12px;
             border-bottom: 1px solid #e2e8f0;
+            -webkit-overflow-scrolling: touch;
         }
         .pyeong-tab {
             border: 1px solid #cbd5e1;
             background: #f8fafc;
-            padding: 5px 10px;
+            padding: 6px 10px;
             border-radius: 7px;
             font-size: 11.5px;
             font-weight: 700;
             cursor: pointer;
             white-space: nowrap;
+            flex-shrink: 0;
         }
         .pyeong-tab.active {
             background: var(--primary);
@@ -606,7 +746,7 @@
             margin-top: 2px;
         }
 
-        /* 섹션 박스 */
+        /* 섹션 박스 (클릭하여 개별 접기/펼치기 가능) */
         .detail-box {
             background: #f8fafc;
             border: 1px solid #e2e8f0;
@@ -622,6 +762,24 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            cursor: pointer;
+            user-select: none;
+            gap: 6px;
+        }
+        .detail-box.collapsed .detail-box-title {
+            margin-bottom: 0;
+        }
+        .detail-box.collapsed > :not(.detail-box-title) {
+            display: none !important;
+        }
+        .section-fold-hint {
+            font-size: 10.5px;
+            color: #64748b;
+            font-weight: 700;
+            background: #e2e8f0;
+            padding: 2px 6px;
+            border-radius: 5px;
+            flex-shrink: 0;
         }
 
         /* 층별 바 차트 및 테이블 */
@@ -646,6 +804,11 @@
             border-radius: 8px;
         }
 
+        .table-scroll-wrap {
+            width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
         table.data-table {
             width: 100%;
             border-collapse: collapse;
@@ -657,6 +820,7 @@
             padding: 6px 6px;
             text-align: left;
             font-weight: 800;
+            white-space: nowrap;
         }
         table.data-table td {
             padding: 6px 6px;
@@ -705,6 +869,8 @@
             display: none;
             align-items: center;
             gap: 12px;
+            max-width: calc(100vw - 410px);
+            flex-wrap: wrap;
         }
         .compare-bar.active {
             display: flex;
@@ -754,22 +920,25 @@
             width: 960px;
             max-width: 96vw;
             max-height: 90vh;
+            max-height: 90dvh;
             display: flex;
             flex-direction: column;
             overflow: hidden;
             box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
         }
         .modal-header {
-            padding: 16px 20px;
+            padding: 14px 18px;
             background: #0f172a;
             color: #fff;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            gap: 10px;
         }
         .modal-body {
-            padding: 18px 20px;
+            padding: 16px 18px;
             overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
         }
         .form-grid {
             display: grid;
@@ -791,39 +960,282 @@
             border-radius: 8px;
             font-size: 12.5px;
         }
+        .sub-summary-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-bottom: 12px;
+        }
 
-        /* 우측 하단 범례 */
+        /* 우측 하단 범례 (클릭 시 접기/펼치기) */
         .map-legend {
             position: absolute;
             bottom: 18px;
             right: 18px;
             z-index: 999;
             background: var(--panel-bg);
-            padding: 10px 14px;
+            padding: 9px 13px;
             border-radius: 12px;
             border: 1px solid var(--border-color);
             box-shadow: 0 4px 16px rgba(15, 23, 42, 0.12);
             font-size: 11px;
+            cursor: pointer;
+            user-select: none;
+            transition: all 0.15s;
+        }
+        .map-legend.collapsed .legend-row {
+            display: none !important;
+        }
+        .legend-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            font-weight: 800;
+            color: #0f172a;
         }
         .legend-row {
             display: flex;
             align-items: center;
             gap: 10px;
-            margin-top: 5px;
+            margin-top: 6px;
+            flex-wrap: wrap;
         }
         .legend-swatch {
-            width: 12px;
-            height: 12px;
+            width: 11px;
+            height: 11px;
             border-radius: 3px;
             display: inline-block;
+            margin-right: 3px;
+            vertical-align: middle;
         }
 
-        @media (max-width: 900px) {
+        /* 모바일 전용 하단 퀵 네비게이션 바 */
+        .mobile-quick-bar {
+            display: none;
+            position: fixed;
+            bottom: 10px;
+            left: 10px;
+            right: 10px;
+            z-index: 1000;
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 7px 8px;
+            border-radius: 14px;
+            box-shadow: 0 8px 25px rgba(15, 23, 42, 0.32);
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            gap: 6px;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .mobile-quick-btn {
+            flex: 1;
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            background: rgba(255, 255, 255, 0.08);
+            color: #f8fafc;
+            padding: 8px 6px;
+            border-radius: 9px;
+            font-size: 11.5px;
+            font-weight: 800;
+            cursor: pointer;
+            text-align: center;
+            white-space: nowrap;
+        }
+        .mobile-quick-btn.active {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: #fff;
+        }
+        .mobile-quick-btn.pink {
+            background: linear-gradient(135deg, #db2777, #be185d);
+            border: none;
+            color: #fff;
+        }
+
+        @media (max-width: 1024px) {
             .left-panel {
-                width: 310px;
+                width: 320px;
             }
             .top-bar {
-                left: 330px;
+                left: 344px;
+            }
+            .compare-bar {
+                left: 344px;
+                max-width: calc(100vw - 360px);
+            }
+        }
+
+        /* 📱 모바일 화면 최적화 (768px 이하) */
+        @media (max-width: 768px) {
+            .left-panel {
+                top: 8px;
+                left: 8px;
+                right: 8px;
+                bottom: auto;
+                width: auto;
+                max-height: calc(100dvh - 76px);
+                border-radius: 14px;
+                z-index: 1003;
+            }
+            .brand-header {
+                padding: 10px 13px;
+            }
+            .brand-title {
+                font-size: 14px;
+                margin-bottom: 2px;
+            }
+            .brand-sub {
+                font-size: 10px;
+                gap: 5px;
+            }
+            .daily-badge {
+                margin-top: 4px;
+                padding: 3px 7px;
+                font-size: 10px;
+            }
+
+            .top-bar {
+                top: 56px;
+                left: 8px !important;
+                right: 8px;
+                gap: 6px;
+                z-index: 1001;
+            }
+            .status-pills {
+                width: 100%;
+                padding: 6px 8px;
+                border-radius: 11px;
+                gap: 5px;
+                justify-content: space-between;
+            }
+            .zoom-mode-group {
+                flex: 1;
+                padding: 2px;
+            }
+            .zoom-mode-btn {
+                padding: 5px 8px;
+                font-size: 11px;
+            }
+            .stat-chip {
+                font-size: 11px;
+                padding: 3px 7px;
+            }
+            .top-actions {
+                width: 100%;
+                background: var(--panel-bg);
+                padding: 7px;
+                border-radius: 11px;
+                border: 1px solid var(--border-color);
+                box-shadow: 0 6px 18px rgba(15, 23, 42, 0.14);
+                gap: 5px;
+            }
+            .action-btn {
+                padding: 6px 10px;
+                font-size: 11px;
+                flex: 1 1 auto;
+                justify-content: center;
+            }
+
+            /* 우측 단지 상세 드로어 -> 모바일 하단 바텀시트 */
+            .right-drawer {
+                top: auto;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                width: 100vw;
+                max-width: 100vw;
+                height: 78dvh;
+                max-height: 82dvh;
+                border-radius: 18px 18px 0 0;
+                z-index: 1005;
+                box-shadow: 0 -8px 30px rgba(15, 23, 42, 0.28);
+            }
+            .right-drawer.collapsed {
+                bottom: 0;
+                height: auto !important;
+                max-height: none !important;
+            }
+            .drawer-header {
+                padding: 6px 14px 10px;
+            }
+            .drawer-title {
+                font-size: 15px;
+            }
+            .drawer-meta {
+                font-size: 11px;
+            }
+            .drawer-body {
+                padding: 12px;
+            }
+            .source-cards {
+                grid-template-columns: 1fr 1fr;
+                gap: 6px;
+            }
+            .src-card {
+                padding: 8px 10px;
+            }
+            .src-card-price {
+                font-size: 13.5px;
+            }
+            .floor-bar-row {
+                grid-template-columns: 68px 1fr 78px;
+                font-size: 11px;
+            }
+
+            /* 범례 및 줌 컨트롤 위치 조정 */
+            .map-legend {
+                bottom: 68px;
+                right: 10px;
+                padding: 7px 10px;
+                font-size: 10.5px;
+            }
+            .leaflet-bottom.leaflet-left {
+                bottom: 58px !important;
+            }
+
+            /* 비교함 바 */
+            .compare-bar {
+                left: 8px;
+                right: 8px;
+                bottom: 66px;
+                max-width: none;
+                padding: 8px 12px;
+                gap: 8px;
+                z-index: 1002;
+            }
+
+            /* 모바일 하단 퀵 바 표시 */
+            .mobile-quick-bar {
+                display: flex;
+            }
+
+            /* 모달 모바일 최적화 */
+            .modal-backdrop {
+                padding: 8px;
+                align-items: flex-end;
+            }
+            .modal-card {
+                width: 100% !important;
+                max-width: 100vw;
+                max-height: 92dvh;
+                border-radius: 16px 16px 12px 12px;
+            }
+            .modal-header {
+                padding: 12px 14px;
+            }
+            .modal-body {
+                padding: 12px 14px;
+            }
+            .sub-summary-grid {
+                grid-template-columns: 1fr 1fr;
+                gap: 7px;
+            }
+            .form-grid {
+                grid-template-columns: 1fr;
+                gap: 8px;
+            }
+            .form-group[style*="span 2"] {
+                grid-column: span 1 !important;
             }
         }
     </style>
@@ -833,7 +1245,7 @@
     <div id="map"></div>
 
     <!-- 상단 바: 줌 레벨 모드 전환 & 청약 모드 & 국내 지도 전환 & 데이터 수집/비교 버튼 -->
-    <div class="top-bar">
+    <div class="top-bar" id="topBar">
         <div class="status-pills">
             <div class="zoom-mode-group">
                 <button class="zoom-mode-btn active" data-view="auto" onclick="setViewMode('auto')">자동(줌 연동)</button>
@@ -842,6 +1254,7 @@
                 <button class="zoom-mode-btn" data-view="complex" onclick="setViewMode('complex')">개별 단지</button>
                 <button class="zoom-mode-btn sub-mode" data-view="subscription" onclick="setViewMode('subscription')">🎯 청약·분양지도</button>
             </div>
+            <button class="collapse-toggle-btn light" id="topBarToggleBtn" onclick="toggleTopBarCollapse()">⚙️ 도구 접기 ▲</button>
             <div class="stat-chip">표시 <strong id="statCount">0</strong>곳 <span id="totalPoolHint" style="color:#64748b; font-size:11px;">(전체 14,580단지)</span></div>
             <div class="stat-chip">평균가 <strong id="statAvgPrice">-</strong></div>
             <div class="stat-chip">평당가 <strong id="statAvgPyeong">-</strong></div>
@@ -869,11 +1282,12 @@
         </div>
     </div>
 
-    <!-- 좌측 통합 필터 및 지역/단지 순위 패널 -->
-    <div class="left-panel">
-        <div class="brand-header">
+    <!-- 좌측 통합 필터 및 지역/단지 순위 패널 (헤더 클릭 시 접기/펼치기) -->
+    <div class="left-panel" id="leftPanel">
+        <div class="brand-header" onclick="toggleLeftPanel()" title="클릭하여 검색·필터·순위 정보창 접기/펼치기">
             <div class="brand-title">
                 <span>🏙️ 서울·경기 부동산 & 청약 통합 지도</span>
+                <button class="collapse-toggle-btn" id="leftPanelToggleBtn" onclick="event.stopPropagation(); toggleLeftPanel();">접기 ▲</button>
             </div>
             <div class="brand-sub">
                 <span><i class="source-dot" style="background:#7c3aed;"></i>공시가격</span>
@@ -910,114 +1324,133 @@
                 </div>
             </div>
 
-            <!-- 2. 거래 유형 (매매 / 전세 / 월세 / 공시가격) -->
-            <div class="filter-section">
-                <div class="filter-label">
-                    <span>💰 거래 유형 (매매 · 전세 · 월세 · 공시가격)</span>
-                </div>
-                <div class="chip-grid" id="tradeTypeGroup">
-                    <button class="chip-btn active" data-trade="매매" onclick="selectFilter('trade_type', '매매', this)">매매</button>
-                    <button class="chip-btn" data-trade="전세" onclick="selectFilter('trade_type', '전세', this)">전세</button>
-                    <button class="chip-btn" data-trade="월세" onclick="selectFilter('trade_type', '월세', this)">월세</button>
-                    <button class="chip-btn" data-trade="공시가격" onclick="selectFilter('trade_type', '공시가격', this)">공시가격</button>
-                </div>
+            <!-- 상세 필터 조건 접기/펼치기 토글 바 -->
+            <div class="filter-accordion-bar" onclick="toggleDetailedFilters()">
+                <span>🎛️ 상세 필터 조건 (거래 · 출처 · 유형 · 평수 · 층수)</span>
+                <span id="detailedFiltersToggleLabel">접기 ▲</span>
             </div>
 
-            <!-- 3. 데이터 출처 구분 -->
-            <div class="filter-section">
-                <div class="filter-label">
-                    <span>🏛️ 정보 출처 구분</span>
-                    <span class="hint">실거래·호가·KB시세·공시가</span>
+            <div id="detailedFiltersWrap">
+                <!-- 2. 거래 유형 (매매 / 전세 / 월세 / 공시가격) -->
+                <div class="filter-section">
+                    <div class="filter-label">
+                        <span>💰 거래 유형 (매매 · 전세 · 월세 · 공시가격)</span>
+                    </div>
+                    <div class="chip-grid" id="tradeTypeGroup">
+                        <button class="chip-btn active" data-trade="매매" onclick="selectFilter('trade_type', '매매', this)">매매</button>
+                        <button class="chip-btn" data-trade="전세" onclick="selectFilter('trade_type', '전세', this)">전세</button>
+                        <button class="chip-btn" data-trade="월세" onclick="selectFilter('trade_type', '월세', this)">월세</button>
+                        <button class="chip-btn" data-trade="공시가격" onclick="selectFilter('trade_type', '공시가격', this)">공시가격</button>
+                    </div>
                 </div>
-                <div class="chip-grid" id="sourceGroup">
-                    <button class="chip-btn active" data-source="전체" onclick="selectFilter('source', '전체', this)">전체 통합</button>
-                    <button class="chip-btn" data-source="공시가격알리미" onclick="selectFilter('source', '공시가격알리미', this)">공시가격알리미</button>
-                    <button class="chip-btn" data-source="국토부실거래" onclick="selectFilter('source', '국토부실거래', this)">국토부실거래</button>
-                    <button class="chip-btn" data-source="네이버부동산" onclick="selectFilter('source', '네이버부동산', this)">네이버호가</button>
-                    <button class="chip-btn" data-source="KB부동산" onclick="selectFilter('source', 'KB부동산', this)">KB시세</button>
-                </div>
-            </div>
 
-            <!-- 4. 부동산 유형 -->
-            <div class="filter-section">
-                <div class="filter-label">
-                    <span>🏢 부동산 유형</span>
+                <!-- 3. 데이터 출처 구분 -->
+                <div class="filter-section">
+                    <div class="filter-label">
+                        <span>🏛️ 정보 출처 구분</span>
+                        <span class="hint">실거래·호가·KB시세·공시가</span>
+                    </div>
+                    <div class="chip-grid" id="sourceGroup">
+                        <button class="chip-btn active" data-source="전체" onclick="selectFilter('source', '전체', this)">전체 통합</button>
+                        <button class="chip-btn" data-source="공시가격알리미" onclick="selectFilter('source', '공시가격알리미', this)">공시가격알리미</button>
+                        <button class="chip-btn" data-source="국토부실거래" onclick="selectFilter('source', '국토부실거래', this)">국토부실거래</button>
+                        <button class="chip-btn" data-source="네이버부동산" onclick="selectFilter('source', '네이버부동산', this)">네이버호가</button>
+                        <button class="chip-btn" data-source="KB부동산" onclick="selectFilter('source', 'KB부동산', this)">KB시세</button>
+                    </div>
                 </div>
-                <div class="chip-grid" id="propTypeGroup">
-                    <button class="chip-btn active" onclick="selectFilter('property_type', '전체', this)">전체</button>
-                    <button class="chip-btn" onclick="selectFilter('property_type', '아파트', this)">아파트</button>
-                    <button class="chip-btn" onclick="selectFilter('property_type', '오피스텔', this)">오피스텔</button>
-                    <button class="chip-btn" onclick="selectFilter('property_type', '빌라/연립', this)">빌라·연립·다세대</button>
-                </div>
-            </div>
 
-            <!-- 5. 평수 (면적) 구분 -->
-            <div class="filter-section">
-                <div class="filter-label">
-                    <span>📐 평수(공급평형/전용면적) 구분</span>
-                    <span class="hint">1평 ≈ 3.3㎡</span>
+                <!-- 4. 부동산 유형 -->
+                <div class="filter-section">
+                    <div class="filter-label">
+                        <span>🏢 부동산 유형</span>
+                    </div>
+                    <div class="chip-grid" id="propTypeGroup">
+                        <button class="chip-btn active" onclick="selectFilter('property_type', '전체', this)">전체</button>
+                        <button class="chip-btn" onclick="selectFilter('property_type', '아파트', this)">아파트</button>
+                        <button class="chip-btn" onclick="selectFilter('property_type', '오피스텔', this)">오피스텔</button>
+                        <button class="chip-btn" onclick="selectFilter('property_type', '빌라/연립', this)">빌라·연립·다세대</button>
+                    </div>
                 </div>
-                <div class="chip-grid" id="pyeongGroup">
-                    <button class="chip-btn active" onclick="selectFilter('pyeong_group', '전체', this)">전체</button>
-                    <button class="chip-btn" onclick="selectFilter('pyeong_group', '소형(~19평)', this)">~19평</button>
-                    <button class="chip-btn" onclick="selectFilter('pyeong_group', '20평대(20~29평)', this)">20평대</button>
-                    <button class="chip-btn" onclick="selectFilter('pyeong_group', '30평대(30~39평)', this)">30평대</button>
-                    <button class="chip-btn" onclick="selectFilter('pyeong_group', '40평대(40~49평)', this)">40평대</button>
-                    <button class="chip-btn" onclick="selectFilter('pyeong_group', '대형(50평+)', this)">50평+</button>
-                </div>
-                <div class="range-inputs">
-                    <input type="number" id="minPyeongInput" placeholder="최소 평수 (예: 24)" onchange="refreshData()" />
-                    <span>~</span>
-                    <input type="number" id="maxPyeongInput" placeholder="최대 평수 (예: 35)" onchange="refreshData()" />
-                </div>
-            </div>
 
-            <!-- 6. 층별 구분 -->
-            <div class="filter-section">
-                <div class="filter-label">
-                    <span>🪜 층별 구분 필터</span>
-                    <span class="hint">층수별 시세·로얄층 비교</span>
+                <!-- 5. 평수 (면적) 구분 -->
+                <div class="filter-section">
+                    <div class="filter-label">
+                        <span>📐 평수(공급평형/전용면적) 구분</span>
+                        <span class="hint">1평 ≈ 3.3㎡</span>
+                    </div>
+                    <div class="chip-grid" id="pyeongGroup">
+                        <button class="chip-btn active" onclick="selectFilter('pyeong_group', '전체', this)">전체</button>
+                        <button class="chip-btn" onclick="selectFilter('pyeong_group', '소형(~19평)', this)">~19평</button>
+                        <button class="chip-btn" onclick="selectFilter('pyeong_group', '20평대(20~29평)', this)">20평대</button>
+                        <button class="chip-btn" onclick="selectFilter('pyeong_group', '30평대(30~39평)', this)">30평대</button>
+                        <button class="chip-btn" onclick="selectFilter('pyeong_group', '40평대(40~49평)', this)">40평대</button>
+                        <button class="chip-btn" onclick="selectFilter('pyeong_group', '대형(50평+)', this)">50평+</button>
+                    </div>
+                    <div class="range-inputs">
+                        <input type="number" id="minPyeongInput" placeholder="최소 평수 (예: 24)" onchange="refreshData()" />
+                        <span>~</span>
+                        <input type="number" id="maxPyeongInput" placeholder="최대 평수 (예: 35)" onchange="refreshData()" />
+                    </div>
                 </div>
-                <div class="chip-grid" id="floorGroup">
-                    <button class="chip-btn active" onclick="selectFilter('floor_group', '전체', this)">전체 층</button>
-                    <button class="chip-btn" onclick="selectFilter('floor_group', '1층', this)">1층</button>
-                    <button class="chip-btn" onclick="selectFilter('floor_group', '저층(2~5층)', this)">저층(2~5층)</button>
-                    <button class="chip-btn" onclick="selectFilter('floor_group', '중층(6~15층)', this)">중층(6~15층)</button>
-                    <button class="chip-btn" onclick="selectFilter('floor_group', '고층(16층+)', this)">고층(16층+)</button>
-                    <button class="chip-btn" onclick="selectFilter('floor_group', '탑층', this)">탑층</button>
-                </div>
-                <div class="range-inputs">
-                    <input type="number" id="minFloorInput" placeholder="최소 층 (예: 10)" onchange="refreshData()" />
-                    <span>~</span>
-                    <input type="number" id="maxFloorInput" placeholder="최대 층 (예: 30)" onchange="refreshData()" />
+
+                <!-- 6. 층별 구분 -->
+                <div class="filter-section">
+                    <div class="filter-label">
+                        <span>🪜 층별 구분 필터</span>
+                        <span class="hint">층수별 시세·로얄층 비교</span>
+                    </div>
+                    <div class="chip-grid" id="floorGroup">
+                        <button class="chip-btn active" onclick="selectFilter('floor_group', '전체', this)">전체 층</button>
+                        <button class="chip-btn" onclick="selectFilter('floor_group', '1층', this)">1층</button>
+                        <button class="chip-btn" onclick="selectFilter('floor_group', '저층(2~5층)', this)">저층(2~5층)</button>
+                        <button class="chip-btn" onclick="selectFilter('floor_group', '중층(6~15층)', this)">중층(6~15층)</button>
+                        <button class="chip-btn" onclick="selectFilter('floor_group', '고층(16층+)', this)">고층(16층+)</button>
+                        <button class="chip-btn" onclick="selectFilter('floor_group', '탑층', this)">탑층</button>
+                    </div>
+                    <div class="range-inputs">
+                        <input type="number" id="minFloorInput" placeholder="최소 층 (예: 10)" onchange="refreshData()" />
+                        <span>~</span>
+                        <input type="number" id="maxFloorInput" placeholder="최대 층 (예: 30)" onchange="refreshData()" />
+                    </div>
                 </div>
             </div>
 
             <!-- 7. 현재 필터 기준 가격 비교 랭킹 -->
             <div>
-                <div class="filter-label">
+                <div class="filter-label" style="cursor:pointer;" onclick="toggleRankingListCollapse()">
                     <span id="rankingTitle">🏆 현재 조건 가격 비교 순위</span>
-                    <button class="compare-add-mini" onclick="resetAllFilters()">필터 초기화</button>
+                    <div style="display:flex; gap:5px; align-items:center;">
+                        <button class="compare-add-mini" onclick="event.stopPropagation(); resetAllFilters()">필터 초기화</button>
+                        <span class="section-fold-hint" id="rankingFoldHint">접기 ▲</span>
+                    </div>
                 </div>
                 <div id="rankingContainer" class="ranking-list"></div>
             </div>
         </div>
     </div>
 
-    <!-- 우측 단지 상세 분석 드로어 (5년 가격변화 추이 그래프 + 청약정보 + 출처별·층별·평수별 교차 비교) -->
+    <!-- 우측 단지 상세 분석 드로어 (헤더/핸들 클릭 시 접기·펼치기 가능, 내부 각 섹션도 클릭 시 접기·펼치기 가능) -->
     <div class="right-drawer" id="detailDrawer">
-        <div class="drawer-header">
-            <div>
+        <div class="drawer-drag-handle" onclick="toggleDetailDrawerCollapse()" title="눌러서 상세 정보창 접기/펼치기">
+            <div class="drawer-drag-bar"></div>
+        </div>
+        <div class="drawer-header" onclick="toggleDetailDrawerCollapse()" title="눌러서 상세 정보창 접기/펼치기">
+            <div style="flex:1; min-width:0;">
                 <div class="drawer-title">
                     <span id="drawerComplexName">단지명</span>
                     <span class="prop-badge" id="drawerPropBadge">아파트</span>
                 </div>
                 <div class="drawer-meta" id="drawerComplexMeta">서울특별시 강남구 대치동 · 2015년 준공 · 1,200세대 · 최고 35층</div>
             </div>
-            <div style="display:flex; gap:6px;">
+            <div style="display:flex; gap:5px; align-items:center; flex-shrink:0;" onclick="event.stopPropagation()">
+                <button class="collapse-toggle-btn" id="drawerCollapseBtn" onclick="toggleDetailDrawerCollapse()">접기 ▼</button>
                 <button class="compare-add-mini" style="padding:5px 8px; font-size:11px;" id="drawerAddCompareBtn">+ 비교함</button>
                 <button class="close-btn" onclick="closeDetailDrawer()">✕</button>
             </div>
+        </div>
+        <div class="drawer-collapsed-summary" id="drawerCollapsedSummary" onclick="toggleDetailDrawerCollapse()">
+            <span id="drawerCollapsedPriceText">매매 - · 전세 - · 평당 -</span>
+            <span style="color:#38bdf8; font-size:11px; white-space:nowrap;">상세 그래프·시세 펼치기 ▲</span>
         </div>
 
         <div class="drawer-body">
@@ -1030,15 +1463,18 @@
 
             <!-- 📈 최근 5년간(2021~2026) 가격변화 추이 그래프 -->
             <div class="detail-box" style="background:#fff; border-color:#cbd5e1;">
-                <div class="detail-box-title">
-                    <span>📈 최근 5년간(2021~2026) 가격변화 추이 그래프</span>
-                    <span id="chartSyncBadge" style="font-size:10px; color:#2563eb; font-weight:700;">매매·전세·공시가격 동시 비교</span>
+                <div class="detail-box-title" onclick="toggleDetailSection(this)">
+                    <span>📈 최근 5년간(2021~2026) 가격변화 추이</span>
+                    <div style="display:flex; align-items:center; gap:6px;">
+                        <span id="chartSyncBadge" style="font-size:10px; color:#2563eb; font-weight:700;">매매·전세·공시가 비교</span>
+                        <span class="section-fold-hint">접기 ▲</span>
+                    </div>
                 </div>
                 <div class="trend-kpi-grid" id="drawerTrendKpis"></div>
                 <div style="position:relative; height:210px; width:100%;">
                     <canvas id="priceHistoryChart"></canvas>
                 </div>
-                <div style="margin-top:8px;">
+                <div class="table-scroll-wrap" style="margin-top:8px;">
                     <table class="data-table" style="font-size:10.5px;">
                         <thead>
                             <tr>
@@ -1057,58 +1493,66 @@
             </div>
 
             <!-- 4대 부동산 플랫폼/공공데이터 가격 교차 비교 -->
-            <div class="filter-label">
-                <span>🏛️ 출처별 가격 비교 (네이버 · KB · 국토부 · 공시가격알리미)</span>
+            <div class="detail-box" style="background:#fff; border-color:#e2e8f0;">
+                <div class="detail-box-title" onclick="toggleDetailSection(this)">
+                    <span>🏛️ 4대 출처별 가격 비교 (네이버 · KB · 국토부 · 공시가)</span>
+                    <span class="section-fold-hint">접기 ▲</span>
+                </div>
+                <div class="source-cards" id="drawerSourceCards" style="margin-bottom:0;"></div>
             </div>
-            <div class="source-cards" id="drawerSourceCards"></div>
 
             <!-- 층별 가격 비교 (1층 vs 저층 vs 중층 vs 고층 vs 탑층) -->
             <div class="detail-box">
-                <div class="detail-box-title">
+                <div class="detail-box-title" onclick="toggleDetailSection(this)">
                     <span>🪜 층별 가격 비교 (매매 · 전세 · 월세 · 공시가격)</span>
-                    <span style="font-size:10.5px; color:#64748b;">1층 대비 프리미엄 포함</span>
+                    <span class="section-fold-hint">접기 ▲</span>
                 </div>
                 <div id="drawerFloorBars" style="margin-bottom:10px;"></div>
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>층구분</th>
-                            <th>매매평균</th>
-                            <th>전세평균</th>
-                            <th>월세평균</th>
-                            <th>공시가격</th>
-                        </tr>
-                    </thead>
-                    <tbody id="drawerFloorTableBody"></tbody>
-                </table>
+                <div class="table-scroll-wrap">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>층구분</th>
+                                <th>매매평균</th>
+                                <th>전세평균</th>
+                                <th>월세평균</th>
+                                <th>공시가격</th>
+                            </tr>
+                        </thead>
+                        <tbody id="drawerFloorTableBody"></tbody>
+                    </table>
+                </div>
             </div>
 
             <!-- 평수별(면적별) 가격 요약 -->
             <div class="detail-box">
-                <div class="detail-box-title">
+                <div class="detail-box-title" onclick="toggleDetailSection(this)">
                     <span>📏 평수별(면적별) 가격 및 전세가율 비교</span>
+                    <span class="section-fold-hint">접기 ▲</span>
                 </div>
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>평수(전용)</th>
-                            <th>매매가(평당)</th>
-                            <th>전세가(전세가율)</th>
-                            <th>월세</th>
-                            <th>공시가격</th>
-                        </tr>
-                    </thead>
-                    <tbody id="drawerAreaTableBody"></tbody>
-                </table>
+                <div class="table-scroll-wrap">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>평수(전용)</th>
+                                <th>매매가(평당)</th>
+                                <th>전세가(전세가율)</th>
+                                <th>월세</th>
+                                <th>공시가격</th>
+                            </tr>
+                        </thead>
+                        <tbody id="drawerAreaTableBody"></tbody>
+                    </table>
+                </div>
             </div>
 
             <!-- 개별 매물 및 실거래/공시가격 상세 기록 -->
             <div class="detail-box">
-                <div class="detail-box-title">
-                    <span>📋 층·평수·출처별 상세 매물 및 실거래 내역</span>
-                    <span id="drawerRecordCount" style="font-size:11px; color:#2563eb;">0건</span>
+                <div class="detail-box-title" onclick="toggleDetailSection(this)">
+                    <span>📋 층·평수·출처별 상세 매물 및 실거래 내역 (<span id="drawerRecordCount" style="color:#2563eb;">0건</span>)</span>
+                    <span class="section-fold-hint">접기 ▲</span>
                 </div>
-                <div style="max-height:240px; overflow-y:auto;">
+                <div class="table-scroll-wrap" style="max-height:240px; overflow-y:auto;">
                     <table class="data-table">
                         <thead>
                             <tr>
@@ -1134,9 +1578,12 @@
         <button class="action-btn" style="padding:6px 10px; font-size:11.5px;" onclick="clearCompareBasket()">비우기</button>
     </div>
 
-    <!-- 우측 하단 가격 범례 -->
-    <div class="map-legend">
-        <div style="font-weight:800; color:#0f172a;">가격 · 청약 색상 범례</div>
+    <!-- 우측 하단 가격 범례 (클릭 시 접기/펼치기) -->
+    <div class="map-legend" id="mapLegend" onclick="toggleLegendCollapse()" title="눌러서 범례 접기/펼치기">
+        <div class="legend-head">
+            <span>🎨 가격 · 청약 범례</span>
+            <span id="legendToggleHint" style="font-size:10px; color:#64748b;">접기 ▼</span>
+        </div>
         <div class="legend-row">
             <span><i class="legend-swatch" style="background:#dc2626;"></i>15억+</span>
             <span><i class="legend-swatch" style="background:#ea580c;"></i>9~15억</span>
@@ -1144,6 +1591,14 @@
             <span><i class="legend-swatch" style="background:#10b981;"></i>5억미만</span>
             <span><i class="legend-swatch" style="background:#db2777;"></i>청약·분양단지</span>
         </div>
+    </div>
+
+    <!-- 📱 모바일 하단 고정 퀵 바 -->
+    <div class="mobile-quick-bar" id="mobileQuickBar">
+        <button class="mobile-quick-btn" id="mobQuickFilterBtn" onclick="toggleLeftPanel()">🔍 검색·필터·순위</button>
+        <button class="mobile-quick-btn pink" onclick="openSubscriptionModal()">🗓️ 청약일정(700)</button>
+        <button class="mobile-quick-btn" onclick="openCompareModal()">📊 비교함</button>
+        <button class="mobile-quick-btn" onclick="toggleTopBarCollapse()">⚙️ 지도·도구</button>
     </div>
 
     <!-- 모달 0: 서울·경기 청약/분양 예정 전체 정보 모달 (700개 단지) -->
@@ -1192,10 +1647,10 @@
                 </div>
 
                 <!-- 청약 요약 카드 -->
-                <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:12px;" id="subSummaryCards"></div>
+                <div class="sub-summary-grid" id="subSummaryCards"></div>
 
                 <!-- 청약 목록 테이블 -->
-                <div style="max-height:54vh; overflow-y:auto; border:1px solid #e2e8f0; border-radius:10px;">
+                <div class="table-scroll-wrap" style="max-height:54vh; overflow-y:auto; border:1px solid #e2e8f0; border-radius:10px;">
                     <table class="data-table" style="font-size:12px;">
                         <thead style="position:sticky; top:0; z-index:2;">
                             <tr>
@@ -2107,7 +2562,77 @@
             }).join('');
         }
 
+        function isMobileViewport() {
+            return window.innerWidth <= 768;
+        }
+
+        function toggleLeftPanel(forceCollapse = null) {
+            const panel = document.getElementById('leftPanel');
+            const btn = document.getElementById('leftPanelToggleBtn');
+            const mobBtn = document.getElementById('mobQuickFilterBtn');
+            if (!panel) return;
+            const willCollapse = forceCollapse !== null ? forceCollapse : !panel.classList.contains('collapsed');
+            panel.classList.toggle('collapsed', willCollapse);
+            if (btn) btn.textContent = willCollapse ? '펼치기 ▼' : '접기 ▲';
+            if (mobBtn) mobBtn.classList.toggle('active', !willCollapse);
+        }
+
+        function toggleDetailedFilters() {
+            const wrap = document.getElementById('detailedFiltersWrap');
+            const label = document.getElementById('detailedFiltersToggleLabel');
+            if (!wrap) return;
+            const isCollapsed = wrap.classList.toggle('collapsed');
+            if (label) label.textContent = isCollapsed ? '펼치기 ▼' : '접기 ▲';
+        }
+
+        function toggleRankingListCollapse() {
+            const container = document.getElementById('rankingContainer');
+            const hint = document.getElementById('rankingFoldHint');
+            if (!container) return;
+            const isHidden = container.style.display === 'none';
+            container.style.display = isHidden ? 'flex' : 'none';
+            if (hint) hint.textContent = isHidden ? '접기 ▲' : '펼치기 ▼';
+        }
+
+        function toggleTopBarCollapse(forceCollapse = null) {
+            const bar = document.getElementById('topBar');
+            const btn = document.getElementById('topBarToggleBtn');
+            if (!bar) return;
+            const willCollapse = forceCollapse !== null ? forceCollapse : !bar.classList.contains('collapsed');
+            bar.classList.toggle('collapsed', willCollapse);
+            if (btn) btn.textContent = willCollapse ? '⚙️ 도구 펼치기 ▼' : '⚙️ 도구 접기 ▲';
+        }
+
+        function toggleDetailDrawerCollapse(forceCollapse = null) {
+            const drawer = document.getElementById('detailDrawer');
+            const btn = document.getElementById('drawerCollapseBtn');
+            if (!drawer) return;
+            const willCollapse = forceCollapse !== null ? forceCollapse : !drawer.classList.contains('collapsed');
+            drawer.classList.toggle('collapsed', willCollapse);
+            if (btn) btn.textContent = willCollapse ? '펼치기 ▲' : '접기 ▼';
+        }
+
+        function toggleDetailSection(titleEl) {
+            const box = titleEl.closest('.detail-box');
+            if (!box) return;
+            const isCollapsed = box.classList.toggle('collapsed');
+            const hint = titleEl.querySelector('.section-fold-hint');
+            if (hint) hint.textContent = isCollapsed ? '펼치기 ▼' : '접기 ▲';
+        }
+
+        function toggleLegendCollapse(forceCollapse = null) {
+            const leg = document.getElementById('mapLegend');
+            const hint = document.getElementById('legendToggleHint');
+            if (!leg) return;
+            const willCollapse = forceCollapse !== null ? forceCollapse : !leg.classList.contains('collapsed');
+            leg.classList.toggle('collapsed', willCollapse);
+            if (hint) hint.textContent = willCollapse ? '펼치기 ▲' : '접기 ▼';
+        }
+
         function onRankItemClick(effLevel, complexId, lat, lng) {
+            if (isMobileViewport()) {
+                toggleLeftPanel(true);
+            }
             if ((effLevel === 'complex' || effLevel === 'subscription') && complexId) {
                 map.setView([lat, lng], 16);
                 openComplexDetail(complexId);
@@ -2482,7 +3007,14 @@
             const c = data.complex;
             const subInfo = state.subMap.get(Number(complexId));
 
-            document.getElementById('detailDrawer').classList.add('open');
+            const drawerEl = document.getElementById('detailDrawer');
+            drawerEl.classList.add('open');
+            toggleDetailDrawerCollapse(false);
+            if (isMobileViewport()) {
+                toggleLeftPanel(true);
+                toggleTopBarCollapse(true);
+            }
+
             document.getElementById('drawerComplexName').textContent = c.name;
             document.getElementById('drawerPropBadge').textContent = subInfo ? `${c.property_type} · ${subInfo.status}` : c.property_type;
             document.getElementById('drawerPropBadge').style.background = subInfo ? '#db2777' : '#3b82f6';
@@ -2493,10 +3025,14 @@
             const subBox = document.getElementById('drawerSubAlertBox');
             if (subInfo) {
                 subBox.style.display = 'block';
+                subBox.classList.remove('collapsed');
                 subBox.innerHTML = `
-                    <div class="detail-box-title" style="color:#9d174d; margin-bottom:6px;">
+                    <div class="detail-box-title" style="color:#9d174d; margin-bottom:6px;" onclick="toggleDetailSection(this)">
                         <span>🎯 청약·분양 상세 정보 (${subInfo.supply_type})</span>
-                        <span class="sub-status-badge ${subInfo.status}">${subInfo.status}</span>
+                        <div style="display:flex; gap:5px; align-items:center;">
+                            <span class="sub-status-badge ${subInfo.status}">${subInfo.status}</span>
+                            <span class="section-fold-hint">접기 ▲</span>
+                        </div>
                     </div>
                     <div style="font-size:12px; color:#1e293b; line-height:1.6;">
                         • <strong>${subInfo.is_confirmed_price ? '확정 분양가' : '예상 분양가'} (${subInfo.rep_pyeong}평 기준):</strong>
@@ -2515,6 +3051,12 @@
             }
 
             const saleSummary = data.source_summary.find(s => s.trade_type === '매매') || data.source_summary[0] || {};
+            const jeonseSummary = data.source_summary.find(s => s.trade_type === '전세') || {};
+            const repPyeongPrice = data.area_breakdown[0] ? data.area_breakdown[0].pyeong_price : 0;
+            const collapsedPriceEl = document.getElementById('drawerCollapsedPriceText');
+            if (collapsedPriceEl) {
+                collapsedPriceEl.textContent = `매매 ${formatCompactPrice(saleSummary.avg_price)} · 전세 ${formatCompactPrice(jeonseSummary.avg_price)} · 평당 ${repPyeongPrice.toLocaleString()}만`;
+            }
             const payload = encodeURIComponent(JSON.stringify({
                 key: `comp_${c.id}`,
                 name: `${c.name} (${c.dong})`,
@@ -2867,42 +3409,44 @@
                 <div style="margin-bottom:12px; font-size:12.5px; color:#475569;">
                     ${state.compareBasket.length > 0 ? '선택한 지역/단지 간 출처별·평당 가격 비교 결과입니다.' : '비교함이 비어 있어 현재 화면 상위 5개 지역/단지를 자동 비교합니다.'}
                 </div>
-                <table class="data-table" style="font-size:12.5px;">
-                    <thead>
-                        <tr>
-                            <th>지역 / 단지명</th>
-                            <th>구분</th>
-                            <th>기준 평균가</th>
-                            <th>평당가</th>
-                            <th style="color:#03c75a;">네이버호가</th>
-                            <th style="color:#d97706;">KB시세</th>
-                            <th style="color:#2563eb;">국토부실거래</th>
-                            <th style="color:#7c3aed;">공시가격</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${list.map(it => {
-                            const w = Math.max(12, Math.round(((it.avg_price || 0) / maxPrice) * 100));
-                            return `
-                                <tr>
-                                    <td><strong>${it.name}</strong></td>
-                                    <td>${it.type}</td>
-                                    <td>
-                                        <div style="font-weight:800; color:#dc2626;">${formatKoreanPrice(it.avg_price)}</div>
-                                        <div style="height:6px; background:#e2e8f0; border-radius:3px; margin-top:3px;">
-                                            <div style="width:${w}%; height:100%; background:#dc2626; border-radius:3px;"></div>
-                                        </div>
-                                    </td>
-                                    <td><strong>${(it.avg_pyeong_price || 0).toLocaleString()}만/평</strong></td>
-                                    <td>${formatCompactPrice(it.naver_price)}</td>
-                                    <td>${formatCompactPrice(it.kb_price)}</td>
-                                    <td>${formatCompactPrice(it.molit_price)}</td>
-                                    <td>${formatCompactPrice(it.avg_official_price)}</td>
-                                </tr>
-                            `;
-                        }).join('')}
-                    </tbody>
-                </table>
+                <div class="table-scroll-wrap">
+                    <table class="data-table" style="font-size:12.5px;">
+                        <thead>
+                            <tr>
+                                <th>지역 / 단지명</th>
+                                <th>구분</th>
+                                <th>기준 평균가</th>
+                                <th>평당가</th>
+                                <th style="color:#03c75a;">네이버호가</th>
+                                <th style="color:#d97706;">KB시세</th>
+                                <th style="color:#2563eb;">국토부실거래</th>
+                                <th style="color:#7c3aed;">공시가격</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${list.map(it => {
+                                const w = Math.max(12, Math.round(((it.avg_price || 0) / maxPrice) * 100));
+                                return `
+                                    <tr>
+                                        <td><strong>${it.name}</strong></td>
+                                        <td>${it.type}</td>
+                                        <td>
+                                            <div style="font-weight:800; color:#dc2626;">${formatKoreanPrice(it.avg_price)}</div>
+                                            <div style="height:6px; background:#e2e8f0; border-radius:3px; margin-top:3px;">
+                                                <div style="width:${w}%; height:100%; background:#dc2626; border-radius:3px;"></div>
+                                            </div>
+                                        </td>
+                                        <td><strong>${(it.avg_pyeong_price || 0).toLocaleString()}만/평</strong></td>
+                                        <td>${formatCompactPrice(it.naver_price)}</td>
+                                        <td>${formatCompactPrice(it.kb_price)}</td>
+                                        <td>${formatCompactPrice(it.molit_price)}</td>
+                                        <td>${formatCompactPrice(it.avg_official_price)}</td>
+                                    </tr>
+                                `;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                </div>
             `;
         }
 
@@ -3027,7 +3571,19 @@
             refreshData();
         });
 
+        map.on('click', () => {
+            if (isMobileViewport()) {
+                toggleLeftPanel(true);
+                toggleTopBarCollapse(true);
+            }
+        });
+
         (function init() {
+            if (isMobileViewport()) {
+                toggleLeftPanel(true);
+                toggleTopBarCollapse(true);
+                toggleLegendCollapse(true);
+            }
             initAllComplexes();
             refreshData();
         })();
