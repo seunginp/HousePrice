@@ -1052,6 +1052,132 @@
             color: #fff;
         }
 
+        /* 💵 가격 범위 필터 */
+        .chip-btn[data-price].active { background: #0f766e; border-color: #0f766e; color: #fff; }
+        .price-input-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 7px;
+        }
+        .price-input-row input {
+            flex: 1;
+            min-width: 0;
+            padding: 7px 9px;
+            border: 1px solid #cbd5e1;
+            border-radius: 7px;
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+        .price-input-row input:focus {
+            border-color: var(--primary);
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+        }
+        .price-input-row input.invalid {
+            border-color: #dc2626;
+            background: #fef2f2;
+        }
+        .price-apply-btn {
+            border: none;
+            background: #0f766e;
+            color: #fff;
+            padding: 7px 10px;
+            border-radius: 7px;
+            font-size: 11.5px;
+            font-weight: 800;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        .price-preview {
+            margin-top: 6px;
+            font-size: 11px;
+            font-weight: 700;
+            color: #64748b;
+            line-height: 1.45;
+        }
+        .price-preview.active { color: #0f766e; }
+        .price-preview.error { color: #dc2626; }
+
+        /* 순위 리스트 정렬 · 필터 요약 툴바 */
+        .rank-toolbar {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+            margin: 2px 0 6px;
+            flex-wrap: wrap;
+        }
+        .active-price-badge {
+            display: none;
+            align-items: center;
+            gap: 6px;
+            background: #ecfdf5;
+            border: 1px solid #6ee7b7;
+            color: #047857;
+            font-size: 11px;
+            font-weight: 800;
+            padding: 4px 8px;
+            border-radius: 7px;
+        }
+        .active-price-badge.show { display: inline-flex; }
+        .active-price-badge button {
+            border: none;
+            background: none;
+            color: #047857;
+            cursor: pointer;
+            font-weight: 900;
+            padding: 0;
+            font-size: 12px;
+        }
+        .rank-sort-select {
+            margin-left: auto;
+            padding: 5px 7px;
+            font-size: 11.5px;
+            border: 1px solid #cbd5e1;
+            border-radius: 7px;
+            font-weight: 700;
+            background: #fff;
+            color: var(--text-main);
+        }
+        .rank-more-btn {
+            width: 100%;
+            margin-top: 8px;
+            padding: 8px;
+            border: 1px dashed #94a3b8;
+            background: #f8fafc;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 800;
+            color: #334155;
+            cursor: pointer;
+        }
+        .rank-more-btn:hover { background: #eef2ff; }
+        .rank-empty {
+            padding: 14px 10px;
+            text-align: center;
+            font-size: 12px;
+            color: #64748b;
+            background: #f8fafc;
+            border: 1px dashed #cbd5e1;
+            border-radius: 9px;
+        }
+
+        @media (max-width: 768px) {
+            /* iOS 입력창 자동 확대 방지 (16px 이상) 및 터치 영역 확대 */
+            .search-input,
+            .select-box,
+            .range-inputs input,
+            .price-input-row input,
+            .rank-sort-select {
+                font-size: 16px;
+            }
+            .chip-btn {
+                padding: 8px 9px;
+                font-size: 12px;
+            }
+        }
+
         @media (max-width: 1024px) {
             .left-panel {
                 width: 320px;
@@ -1344,6 +1470,32 @@
                     </div>
                 </div>
 
+                <!-- 💵 가격 범위 (빠른 선택 버튼 + 직접 입력) -->
+                <div class="filter-section">
+                    <div class="filter-label">
+                        <span>💵 가격 범위 <span id="priceBasisLabel" style="font-weight:600; color:#0f766e;">(매매가 기준)</span></span>
+                        <span class="hint">버튼 선택 또는 직접 입력</span>
+                    </div>
+                    <div class="chip-grid" id="pricePresetGroup">
+                        <button class="chip-btn active" data-price="all" onclick="selectPricePreset(null, null, this)">전체</button>
+                        <button class="chip-btn" data-price="p1" onclick="selectPricePreset(null, 30000, this)">~3억</button>
+                        <button class="chip-btn" data-price="p2" onclick="selectPricePreset(30000, 50000, this)">3~5억</button>
+                        <button class="chip-btn" data-price="p3" onclick="selectPricePreset(50000, 70000, this)">5~7억</button>
+                        <button class="chip-btn" data-price="p4" onclick="selectPricePreset(70000, 100000, this)">7~10억</button>
+                        <button class="chip-btn" data-price="p5" onclick="selectPricePreset(100000, 150000, this)">10~15억</button>
+                        <button class="chip-btn" data-price="p6" onclick="selectPricePreset(150000, 200000, this)">15~20억</button>
+                        <button class="chip-btn" data-price="p7" onclick="selectPricePreset(200000, 300000, this)">20~30억</button>
+                        <button class="chip-btn" data-price="p8" onclick="selectPricePreset(300000, null, this)">30억+</button>
+                    </div>
+                    <div class="price-input-row">
+                        <input type="text" id="minPriceInput" inputmode="text" placeholder="최소 (예: 10억 5000)" oninput="debouncePriceInput()" onkeydown="if(event.key==='Enter'){applyPriceInputs();}" />
+                        <span>~</span>
+                        <input type="text" id="maxPriceInput" inputmode="text" placeholder="최대 (예: 14억)" oninput="debouncePriceInput()" onkeydown="if(event.key==='Enter'){applyPriceInputs();}" />
+                        <button class="price-apply-btn" onclick="applyPriceInputs()">적용</button>
+                    </div>
+                    <div class="price-preview" id="pricePreview">입력 예: <b>10억 5000</b>, <b>10.5억</b>, <b>105000</b>(만원), <b>14</b>(=14억), <b>5천만</b></div>
+                </div>
+
                 <!-- 3. 데이터 출처 구분 -->
                 <div class="filter-section">
                     <div class="filter-label">
@@ -1424,7 +1576,23 @@
                         <span class="section-fold-hint" id="rankingFoldHint">접기 ▲</span>
                     </div>
                 </div>
-                <div id="rankingContainer" class="ranking-list"></div>
+                <div id="rankingBody">
+                    <div class="rank-toolbar">
+                        <span class="active-price-badge" id="activePriceBadge">
+                            <span id="activePriceBadgeText"></span>
+                            <button onclick="clearPriceFilter()" title="가격 조건 해제">✕</button>
+                        </span>
+                        <select id="rankSortSelect" class="rank-sort-select" onchange="onRankSortChange(this.value)">
+                            <option value="price_desc">가격 높은순</option>
+                            <option value="price_asc">가격 낮은순</option>
+                            <option value="pyeong_desc">평당가 높은순</option>
+                            <option value="pyeong_asc">평당가 낮은순</option>
+                            <option value="name">이름순 (가나다)</option>
+                        </select>
+                    </div>
+                    <div id="rankingContainer" class="ranking-list"></div>
+                    <button class="rank-more-btn" id="rankMoreBtn" style="display:none;" onclick="showMoreRanking()">더 보기</button>
+                </div>
             </div>
         </div>
     </div>
@@ -1817,6 +1985,10 @@
             source: '전체',
             pyeong_group: '전체',
             floor_group: '전체',
+            price_min: null,   // 만원 단위 (null = 제한 없음)
+            price_max: null,
+            rankSort: 'price_desc',
+            rankLimit: 50,
             selectedComplexId: null,
             selectedComplexPyeong: null,
             lawdList: [],
@@ -1976,6 +2148,9 @@
             } else if (state.trade_type === '공시가격') {
                 activePrice = officialPrice;
             }
+
+            if (state.price_min !== null && activePrice < state.price_min) return null;
+            if (state.price_max !== null && activePrice > state.price_max) return null;
 
             const pyeongPrice = Math.max(100, Math.round(activePrice / targetPyeong));
 
@@ -2166,6 +2341,7 @@
             const parent = btnEl.parentElement;
             Array.from(parent.children).forEach(b => b.classList.remove('active'));
             btnEl.classList.add('active');
+            if (key === 'trade_type') updatePricePreview();
             refreshData();
         }
 
@@ -2181,6 +2357,9 @@
             state.metricMode = state.metricMode === 'total' ? 'pyeong' : 'total';
             document.getElementById('metricModeLabel').textContent =
                 state.metricMode === 'total' ? '총액(억/만)' : '평당가(만/평)';
+            state.rankSort = state.metricMode === 'pyeong' ? 'pyeong_desc' : 'price_desc';
+            const sortSel = document.getElementById('rankSortSelect');
+            if (sortSel) sortSel.value = state.rankSort;
             renderMapAndRanking();
         }
 
@@ -2199,11 +2378,18 @@
             document.getElementById('maxPyeongInput').value = '';
             document.getElementById('minFloorInput').value = '';
             document.getElementById('maxFloorInput').value = '';
+            state.price_min = null;
+            state.price_max = null;
+            document.getElementById('minPriceInput').value = '';
+            document.getElementById('maxPriceInput').value = '';
+            document.getElementById('minPriceInput').classList.remove('invalid');
+            document.getElementById('maxPriceInput').classList.remove('invalid');
 
-            ['tradeTypeGroup', 'sourceGroup', 'propTypeGroup', 'pyeongGroup', 'floorGroup'].forEach(gid => {
+            ['tradeTypeGroup', 'sourceGroup', 'propTypeGroup', 'pyeongGroup', 'floorGroup', 'pricePresetGroup'].forEach(gid => {
                 const container = document.getElementById(gid);
                 Array.from(container.children).forEach((b, i) => b.classList.toggle('active', i === 0));
             });
+            updatePricePreview();
             refreshData();
         }
 
@@ -2227,6 +2413,7 @@
         }
 
         function refreshData() {
+            state.rankLimit = 50;
             const effLevel = getEffectiveLevel();
             const minP = parseInt(document.getElementById('minPyeongInput').value, 10);
             const maxP = parseInt(document.getElementById('maxPyeongInput').value, 10);
@@ -2239,6 +2426,8 @@
                 const subItems = state.subscriptions.filter(s => {
                     if (state.sido !== '전체' && s.sido !== state.sido) return false;
                     if (state.sigungu !== '전체' && s.sigungu !== state.sigungu) return false;
+                    if (state.price_min !== null && s.offer_price < state.price_min) return false;
+                    if (state.price_max !== null && s.offer_price > state.price_max) return false;
                     if (q) {
                         const m = s.name.toLowerCase().includes(q) || s.sigungu.toLowerCase().includes(q) || s.dong.toLowerCase().includes(q);
                         if (!m) return false;
@@ -2515,12 +2704,45 @@
                 : (effLevel === 'dong' ? '법정동' : (effLevel === 'subscription' ? '청약·분양 단지' : '현재화면 단지'));
             titleEl.textContent = `🏆 ${levelName} ${state.trade_type} 순위 (${items.length.toLocaleString()}곳)`;
 
+            // 가격 조건 요약 배지
+            const badge = document.getElementById('activePriceBadge');
+            const badgeText = document.getElementById('activePriceBadgeText');
+            if (state.price_min !== null || state.price_max !== null) {
+                badgeText.textContent = `💵 ${describePriceRange()} · ${items.length.toLocaleString()}곳`;
+                badge.classList.add('show');
+            } else {
+                badge.classList.remove('show');
+            }
+
+            const isComplexLevel = (effLevel === 'complex' || effLevel === 'subscription');
+            const nameOf = (it) => String(isComplexLevel ? it.name : it.full_name || '');
             const sorted = [...items].sort((a, b) => {
-                if (state.metricMode === 'pyeong') return (b.avg_pyeong_price || 0) - (a.avg_pyeong_price || 0);
-                return (b.avg_price || 0) - (a.avg_price || 0);
+                switch (state.rankSort) {
+                    case 'price_asc': return (a.avg_price || 0) - (b.avg_price || 0);
+                    case 'pyeong_desc': return (b.avg_pyeong_price || 0) - (a.avg_pyeong_price || 0);
+                    case 'pyeong_asc': return (a.avg_pyeong_price || 0) - (b.avg_pyeong_price || 0);
+                    case 'name': return nameOf(a).localeCompare(nameOf(b), 'ko');
+                    default: return (b.avg_price || 0) - (a.avg_price || 0);
+                }
             });
 
-            container.innerHTML = sorted.slice(0, 50).map((it, idx) => {
+            const moreBtn = document.getElementById('rankMoreBtn');
+            const shownCount = Math.min(state.rankLimit, sorted.length);
+            if (moreBtn) {
+                if (sorted.length > shownCount) {
+                    moreBtn.style.display = 'block';
+                    moreBtn.textContent = `더 보기 (+${Math.min(50, sorted.length - shownCount)}) · ${shownCount.toLocaleString()} / ${sorted.length.toLocaleString()}곳 표시 중`;
+                } else {
+                    moreBtn.style.display = 'none';
+                }
+            }
+
+            if (sorted.length === 0) {
+                container.innerHTML = `<div class="rank-empty">조건에 맞는 매물이 없습니다.<br/>가격 범위나 필터를 넓히거나, 지도를 이동/축소해 보세요.</div>`;
+                return;
+            }
+
+            container.innerHTML = sorted.slice(0, state.rankLimit).map((it, idx) => {
                 const isComplexLike = (effLevel === 'complex' || effLevel === 'subscription');
                 const name = isComplexLike ? it.name : it.full_name;
                 const sub = isComplexLike
@@ -2562,6 +2784,157 @@
             }).join('');
         }
 
+        // 💵 가격 문자열(한국식) → 만원 단위 숫자로 변환
+        //   "10억 5000" / "10억5천만" / "10.5억" → 105000
+        //   "105000" → 105000(만원), "14" → 140000(14억, 1000 미만 숫자는 억 단위로 해석)
+        //   "5000만" / "5천만" → 5000
+        function parseKoreanPrice(raw) {
+            if (raw === null || raw === undefined) return NaN;
+            let s = String(raw).replace(/[\s,원]/g, '');
+            if (!s) return NaN;
+            let total = 0;
+            let hadEok = false;
+
+            const eokM = s.match(/^([\d.]+)억(.*)$/);
+            if (eokM) {
+                total += parseFloat(eokM[1]) * 10000;
+                hadEok = true;
+                s = eokM[2];
+                if (!s) return Math.round(total);
+            }
+
+            const chunM = s.match(/^([\d.]+)천(.*)$/);
+            if (chunM) {
+                total += parseFloat(chunM[1]) * 1000;
+                s = chunM[2].replace(/만$/, '');
+                if (!s) return Math.round(total);
+                if (/^[\d.]+$/.test(s)) return Math.round(total + parseFloat(s));
+                return NaN;
+            }
+
+            const hadMan = /만$/.test(s);
+            s = s.replace(/만$/, '');
+            if (!/^\d+(\.\d+)?$/.test(s)) return NaN;
+            const n = parseFloat(s);
+            if (isNaN(n)) return NaN;
+            if (hadEok || hadMan) return Math.round(total + n);
+            return Math.round(n < 1000 ? n * 10000 : n);
+        }
+
+        function getPriceBasisName() {
+            switch (state.trade_type) {
+                case '전세': return '전세금';
+                case '월세': return '월세 보증금';
+                case '공시가격': return '공시가격';
+                default: return '매매가';
+            }
+        }
+
+        function describePriceRange() {
+            const lo = state.price_min !== null ? formatKoreanPrice(state.price_min) : '';
+            const hi = state.price_max !== null ? formatKoreanPrice(state.price_max) : '';
+            if (lo && hi) return `${lo} ~ ${hi}`;
+            if (lo) return `${lo} 이상`;
+            if (hi) return `${hi} 이하`;
+            return '전체';
+        }
+
+        function updatePricePreview(errorMsg = '') {
+            const preview = document.getElementById('pricePreview');
+            const basis = document.getElementById('priceBasisLabel');
+            if (basis) basis.textContent = `(${getPriceBasisName()} 기준)`;
+            if (!preview) return;
+            preview.classList.remove('active', 'error');
+            if (errorMsg) {
+                preview.classList.add('error');
+                preview.innerHTML = errorMsg;
+            } else if (state.price_min !== null || state.price_max !== null) {
+                preview.classList.add('active');
+                preview.innerHTML = `✅ 적용 중: <b>${describePriceRange()}</b> (${getPriceBasisName()} 기준)`;
+            } else {
+                preview.innerHTML = '입력 예: <b>10억 5000</b>, <b>10.5억</b>, <b>105000</b>(만원), <b>14</b>(=14억), <b>5천만</b>';
+            }
+        }
+
+        function setPricePresetActive(btnEl) {
+            document.querySelectorAll('#pricePresetGroup .chip-btn').forEach(b => b.classList.toggle('active', b === btnEl));
+        }
+
+        function selectPricePreset(minV, maxV, btnEl) {
+            state.price_min = minV;
+            state.price_max = maxV;
+            const minInput = document.getElementById('minPriceInput');
+            const maxInput = document.getElementById('maxPriceInput');
+            minInput.value = minV !== null ? formatKoreanPrice(minV) : '';
+            maxInput.value = maxV !== null ? formatKoreanPrice(maxV) : '';
+            minInput.classList.remove('invalid');
+            maxInput.classList.remove('invalid');
+            setPricePresetActive(btnEl);
+            updatePricePreview();
+            refreshData();
+        }
+
+        let priceInputTimer = null;
+        function debouncePriceInput() {
+            clearTimeout(priceInputTimer);
+            priceInputTimer = setTimeout(applyPriceInputs, 600);
+        }
+
+        function applyPriceInputs() {
+            clearTimeout(priceInputTimer);
+            const minInput = document.getElementById('minPriceInput');
+            const maxInput = document.getElementById('maxPriceInput');
+            const minRaw = minInput.value.trim();
+            const maxRaw = maxInput.value.trim();
+            let minV = minRaw ? parseKoreanPrice(minRaw) : null;
+            let maxV = maxRaw ? parseKoreanPrice(maxRaw) : null;
+
+            const minBad = minRaw && isNaN(minV);
+            const maxBad = maxRaw && isNaN(maxV);
+            minInput.classList.toggle('invalid', !!minBad);
+            maxInput.classList.toggle('invalid', !!maxBad);
+            if (minBad || maxBad) {
+                updatePricePreview('⚠️ 가격을 인식할 수 없습니다. 예: <b>10억 5000</b>, <b>10.5억</b>, <b>14억</b>');
+                return;
+            }
+
+            if (minV !== null && maxV !== null && minV > maxV) {
+                [minV, maxV] = [maxV, minV];
+            }
+            state.price_min = minV;
+            state.price_max = maxV;
+
+            // 입력값과 일치하는 프리셋 버튼이 있으면 활성화, 없으면 해제
+            let matchedBtn = null;
+            document.querySelectorAll('#pricePresetGroup .chip-btn').forEach(b => {
+                const m = (b.getAttribute('onclick') || '').match(/selectPricePreset\(([^,]+),\s*([^,]+),/);
+                if (!m) return;
+                const pMin = m[1].trim() === 'null' ? null : Number(m[1]);
+                const pMax = m[2].trim() === 'null' ? null : Number(m[2]);
+                if (pMin === minV && pMax === maxV) matchedBtn = b;
+            });
+            setPricePresetActive(matchedBtn);
+
+            updatePricePreview();
+            refreshData();
+        }
+
+        function clearPriceFilter() {
+            const allBtn = document.querySelector('#pricePresetGroup .chip-btn[data-price="all"]');
+            selectPricePreset(null, null, allBtn);
+        }
+
+        function onRankSortChange(val) {
+            state.rankSort = val;
+            state.rankLimit = 50;
+            renderRankingList(state.currentItems || [], getEffectiveLevel());
+        }
+
+        function showMoreRanking() {
+            state.rankLimit += 50;
+            renderRankingList(state.currentItems || [], getEffectiveLevel());
+        }
+
         function isMobileViewport() {
             return window.innerWidth <= 768;
         }
@@ -2586,11 +2959,11 @@
         }
 
         function toggleRankingListCollapse() {
-            const container = document.getElementById('rankingContainer');
+            const container = document.getElementById('rankingBody');
             const hint = document.getElementById('rankingFoldHint');
             if (!container) return;
             const isHidden = container.style.display === 'none';
-            container.style.display = isHidden ? 'flex' : 'none';
+            container.style.display = isHidden ? 'block' : 'none';
             if (hint) hint.textContent = isHidden ? '접기 ▲' : '펼치기 ▼';
         }
 
