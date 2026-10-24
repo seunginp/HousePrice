@@ -1705,6 +1705,7 @@
                         <thead>
                             <tr>
                                 <th>평수(전용)</th>
+                                <th>세대수</th>
                                 <th>매매가(평당)</th>
                                 <th>전세가(전세가율)</th>
                                 <th>월세</th>
@@ -1955,7 +1956,7 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <script src="./data.js?v=20261024_0930"></script>
+    <script src="./data.js?v=20261024_0945"></script>
     <script>
         const PROP_TYPES = ['아파트', '오피스텔', '빌라/연립'];
         const SIDO_NAMES = ['서울특별시', '경기도'];
@@ -2014,20 +2015,33 @@
         }
 
         function getComplexPyeongs(c) {
-            // 1. 이미 단지 객체에 실제 평형 목록이 있으면 사용
+            // 1. 이미 단지 객체에 실제 평형 상세/목록이 있으면 사용
+            if (c.pyeong_details && Array.isArray(c.pyeong_details) && c.pyeong_details.length > 0) {
+                return c.pyeong_details.map(p => p.pyeong);
+            }
             if (c.pyeong_list && Array.isArray(c.pyeong_list) && c.pyeong_list.length > 0 && typeof c.pyeong_list[0] === 'number') {
                 return c.pyeong_list;
             }
             // 2. 호갱노노 사전 검증 레지스트리(window.HOGANGNONO_PRESET_DATA) 확인
             const hPreset = window.HOGANGNONO_PRESET_DATA && (window.HOGANGNONO_PRESET_DATA[c.name] || window.HOGANGNONO_PRESET_DATA[c.name.replace(/\s+/g, '')]);
-            if (hPreset && Array.isArray(hPreset.pyeongs) && hPreset.pyeongs.length > 0) {
-                return hPreset.pyeongs.map(p => parseInt(String(p).replace(/\D/g, ''))).filter(n => !isNaN(n) && n > 0);
+            if (hPreset) {
+                if (hPreset.pyeong_details && hPreset.pyeong_details.length > 0) {
+                    c.pyeong_details = hPreset.pyeong_details;
+                    return hPreset.pyeong_details.map(p => p.pyeong);
+                }
+                if (Array.isArray(hPreset.pyeongs) && hPreset.pyeongs.length > 0) {
+                    return hPreset.pyeongs.map(p => parseInt(String(p).replace(/\D/g, ''))).filter(n => !isNaN(n) && n > 0);
+                }
             }
             // 3. 로컬 스토리지에 캐시된 호갱노노 데이터 확인
             try {
                 const cached = localStorage.getItem('hgnn_v2_' + c.name);
                 if (cached) {
                     const parsed = JSON.parse(cached);
+                    if (parsed.data && parsed.data.pyeong_details && parsed.data.pyeong_details.length > 0) {
+                        c.pyeong_details = parsed.data.pyeong_details;
+                        return parsed.data.pyeong_details.map(p => p.pyeong);
+                    }
                     if (parsed.data && parsed.data.pyeongs && parsed.data.pyeongs.length > 0) {
                         return parsed.data.pyeongs.map(p => parseInt(String(p).replace(/\D/g, ''))).filter(n => !isNaN(n) && n > 0);
                     }
@@ -2080,12 +2094,15 @@
                 if (Array.isArray(arr[15]) && arr[15].length > 0) {
                     c.pyeong_list = arr[15];
                 }
-                // 2. 호갱노노 검증 데이터 사전 동기화 (최고층수, 세대수, 평형)
+                // 2. 호갱노노 검증 데이터 사전 동기화 (최고층수, 세대수, 평형, 세대수 상세)
                 const hPreset = window.HOGANGNONO_PRESET_DATA && (window.HOGANGNONO_PRESET_DATA[c.name] || window.HOGANGNONO_PRESET_DATA[c.name.replace(/\s+/g, '')]);
                 if (hPreset) {
                     if (hPreset.max_floor) c.max_floor = hPreset.max_floor;
                     if (hPreset.households) c.total_households = hPreset.households;
-                    if (hPreset.pyeongs && hPreset.pyeongs.length > 0) {
+                    if (hPreset.pyeong_details && hPreset.pyeong_details.length > 0) {
+                        c.pyeong_details = hPreset.pyeong_details;
+                        c.pyeong_list = hPreset.pyeong_details.map(p => p.pyeong);
+                    } else if (hPreset.pyeongs && hPreset.pyeongs.length > 0) {
                         const cleanInts = hPreset.pyeongs.map(p => parseInt(String(p).replace(/\D/g, ''))).filter(n => !isNaN(n) && n > 0);
                         if (cleanInts.length > 0) c.pyeong_list = cleanInts;
                     }
@@ -3272,13 +3289,28 @@
             const c = state.complexMap.get(Number(complexId));
             if (!c) return null;
 
-            const pyeongs = c.pyeong_list || getComplexPyeongs(c);
-            const pyeong_list = pyeongs.map(p => ({
-                pyeong: p,
-                pyeong_group: classifyPyeongGroup(p),
-                exclusive_area: Math.round(p * 3.3058 * (c.property_type === '아파트' ? 0.76 : 0.68) * 10) / 10,
-                supply_area: Math.round(p * 3.3058 * 10) / 10
-            }));
+            const pdList = c.pyeong_details || (c.hogang_data && c.hogang_data.pyeong_details) || null;
+            let pyeong_list = [];
+            if (pdList && Array.isArray(pdList) && pdList.length > 0) {
+                pyeong_list = pdList.map(p => ({
+                    pyeong: p.pyeong,
+                    households: p.households || null,
+                    pyeong_group: classifyPyeongGroup(p.pyeong),
+                    exclusive_area: p.exclusive_area || Math.round(p.pyeong * 3.3058 * (c.property_type === '아파트' ? 0.76 : 0.68) * 10) / 10,
+                    supply_area: p.supply_area || Math.round(p.pyeong * 3.3058 * 10) / 10,
+                    types: p.types || []
+                }));
+            } else {
+                const pyeongs = c.pyeong_list || getComplexPyeongs(c);
+                pyeong_list = pyeongs.map(p => ({
+                    pyeong: p,
+                    households: null,
+                    pyeong_group: classifyPyeongGroup(p),
+                    exclusive_area: Math.round(p * 3.3058 * (c.property_type === '아파트' ? 0.76 : 0.68) * 10) / 10,
+                    supply_area: Math.round(p * 3.3058 * 10) / 10,
+                    types: []
+                }));
+            }
 
             const activePyeongs = pyeongFilter ? pyeong_list.filter(x => x.pyeong === Number(pyeongFilter)) : pyeong_list;
             const targetP = activePyeongs[0] ? activePyeongs[0].pyeong : c.rep_pyeong;
@@ -3382,6 +3414,7 @@
                 const oAvg = Math.round((sAvg * 0.69) / 10) * 10;
                 return {
                     pyeong: pl.pyeong,
+                    households: pl.households || null,
                     pyeong_group: pl.pyeong_group,
                     exclusive_area: pl.exclusive_area,
                     supply_area: pl.supply_area,
@@ -3494,21 +3527,46 @@
                                 const mDong = pageHtml.match(/(\d+)개동/);
                                 const mPrc = pageHtml.match(/최근 실거래 기준[^<]*<\/div><div class="price">([^<]+)<\/div>/);
                                 const mPprc = pageHtml.match(/(\d[\d,]*만원)[^<]*<div[^>]*class="[^"]*e8116ri1"/);
-                                const pRaw = Array.from(pageHtml.matchAll(/<button[^>]*>(\d+평[A-Z]?)<\/button>/g)).map(m => m[1]);
-                                const cleanP = [];
-                                pRaw.forEach(p => {
-                                    if (!p.includes('대') && !p.includes('비교') && !cleanP.includes(p)) cleanP.push(p);
-                                });
-                                cleanP.sort((a, b) => parseInt(a.replace(/\D/g, '')) - parseInt(b.replace(/\D/g, '')));
+                                let pDetails = [];
+                                const storeMatch = pageHtml.match(/"AptDongStore":\s*({[\s\S]*?})\s*,\s*"[A-Za-z]+Store":/);
+                                if (storeMatch) {
+                                    try {
+                                        const store = JSON.parse(storeMatch[1]);
+                                        const pyMap = store.areaListPyMap || {};
+                                        Object.keys(pyMap).sort((a,b) => parseInt(a) - parseInt(b)).forEach(pyStr => {
+                                            const pyInt = parseInt(pyStr);
+                                            const items = pyMap[pyStr];
+                                            const totHh = items.reduce((s, it) => s + (it.total_household || 0), 0);
+                                            const first = items[0] || {};
+                                            pDetails.push({
+                                                pyeong: pyInt,
+                                                households: totHh,
+                                                supply_area: first.public_area || Math.round(pyInt * 3.3058 * 10) / 10,
+                                                exclusive_area: first.private_area || Math.round(pyInt * 3.3058 * 0.76 * 10) / 10,
+                                                types: items.map(it => it.area_type).filter(Boolean)
+                                            });
+                                        });
+                                    } catch(e) {}
+                                }
+
+                                const cleanP = pDetails.length > 0 ? pDetails.map(p => `${p.pyeong}평`) : [];
+                                if (cleanP.length === 0) {
+                                    const pRaw = Array.from(pageHtml.matchAll(/<button[^>]*>(\d+평[A-Z]?)<\/button>/g)).map(m => m[1]);
+                                    pRaw.forEach(p => {
+                                        if (!p.includes('대') && !p.includes('비교') && !cleanP.includes(p)) cleanP.push(p);
+                                    });
+                                    cleanP.sort((a, b) => parseInt(a.replace(/\D/g, '')) - parseInt(b.replace(/\D/g, '')));
+                                }
 
                                 hData = {
                                     id: topApt.id,
                                     name: topApt.name,
-                                    households: topApt.household,
+                                    households: topApt.household || (pDetails.length > 0 ? pDetails.reduce((s,x) => s + x.households, 0) : null),
                                     max_floor: mFl ? parseInt(mFl[1]) : null,
                                     min_floor: mMinFl ? parseInt(mMinFl[1]) : null,
                                     total_dong: mDong ? parseInt(mDong[1]) : null,
                                     pyeongs: cleanP,
+                                    pyeong_details: pDetails,
                                     recent_price: mPrc ? mPrc[1].trim() : null,
                                     pyeong_price: mPprc ? mPprc[1] : null,
                                     url: pageUrl
@@ -3532,7 +3590,14 @@
                     c.max_floor = hData.max_floor;
                     needRefresh = true;
                 }
-                if (hData.pyeongs && hData.pyeongs.length > 0) {
+                if (hData.pyeong_details && hData.pyeong_details.length > 0) {
+                    c.pyeong_details = hData.pyeong_details;
+                    const intPyeongs = hData.pyeong_details.map(p => p.pyeong);
+                    if (JSON.stringify(c.pyeong_list) !== JSON.stringify(intPyeongs)) {
+                        c.pyeong_list = intPyeongs;
+                        needRefresh = true;
+                    }
+                } else if (hData.pyeongs && hData.pyeongs.length > 0) {
                     const intPyeongs = hData.pyeongs.map(p => parseInt(String(p).replace(/\D/g, ''))).filter(n => !isNaN(n) && n > 0);
                     if (intPyeongs.length > 0 && JSON.stringify(c.pyeong_list) !== JSON.stringify(intPyeongs)) {
                         c.pyeong_list = intPyeongs;
@@ -3556,7 +3621,8 @@
                             let tabsHtml = `<button class="pyeong-tab ${!currentPyeong ? 'active' : ''}" onclick="openComplexDetail(${c.id}, null)">전체 (대표 ${c.rep_pyeong}평)</button>`;
                             freshData.pyeong_list.forEach(p => {
                                 const isAct = currentPyeong === p.pyeong ? 'active' : '';
-                                tabsHtml += `<button class="pyeong-tab ${isAct}" onclick="openComplexDetail(${c.id}, ${p.pyeong})">${p.pyeong}평 (전용 ${p.exclusive_area}㎡)</button>`;
+                                const hhStr = p.households ? `${p.households.toLocaleString()}세대 · ` : '';
+                                tabsHtml += `<button class="pyeong-tab ${isAct}" onclick="openComplexDetail(${c.id}, ${p.pyeong})">${p.pyeong}평 (${hhStr}전용 ${p.exclusive_area}㎡)</button>`;
                             });
                             tabsEl.innerHTML = tabsHtml;
 
@@ -3595,9 +3661,11 @@
 
                             document.getElementById('drawerAreaTableBody').innerHTML = (freshData.area_breakdown || []).map(a => {
                                 const jRatio = (a.sale_avg && a.jeonse_avg) ? Math.round((a.jeonse_avg / a.sale_avg) * 100) : '-';
+                                const hhStr = a.households ? `${a.households.toLocaleString()}세대` : '-';
                                 return `
                                     <tr style="cursor:pointer;" onclick="openComplexDetail(${c.id}, ${a.pyeong})">
                                         <td><strong>${a.pyeong}평</strong> <span style="color:#64748b; font-size:10px;">(${a.exclusive_area}㎡)</span></td>
+                                        <td><span style="font-weight:600; color:#1e293b;">${hhStr}</span></td>
                                         <td><strong style="color:#dc2626;">${formatCompactPrice(a.sale_avg)}</strong><br/><span style="font-size:10px; color:#64748b;">평당 ${(a.pyeong_price||0).toLocaleString()}만</span></td>
                                         <td><strong style="color:#2563eb;">${formatCompactPrice(a.jeonse_avg)}</strong><br/><span style="font-size:10px; color:#64748b;">전세가율 ${jRatio}%</span></td>
                                         <td>${a.wolse_deposit_avg ? `${formatCompactPrice(a.wolse_deposit_avg)}/${a.wolse_rent_avg}만` : '-'}</td>
@@ -3690,9 +3758,10 @@
             let tabsHtml = `<button class="pyeong-tab ${!pyeong ? 'active' : ''}" onclick="openComplexDetail(${c.id}, null)">전체 (대표 ${c.rep_pyeong}평)</button>`;
             data.pyeong_list.forEach(p => {
                 const isAct = pyeong === p.pyeong ? 'active' : '';
+                const hhStr = p.households ? `${p.households.toLocaleString()}세대 · ` : '';
                 tabsHtml += `
                     <button class="pyeong-tab ${isAct}" onclick="openComplexDetail(${c.id}, ${p.pyeong})">
-                        ${p.pyeong}평 (전용 ${p.exclusive_area}㎡)
+                        ${p.pyeong}평 (${hhStr}전용 ${p.exclusive_area}㎡)
                     </button>
                 `;
             });
@@ -3807,9 +3876,11 @@
 
             document.getElementById('drawerAreaTableBody').innerHTML = (data.area_breakdown || []).map(a => {
                 const jRatio = (a.sale_avg && a.jeonse_avg) ? Math.round((a.jeonse_avg / a.sale_avg) * 100) : '-';
+                const hhStr = a.households ? `${a.households.toLocaleString()}세대` : '-';
                 return `
                     <tr style="cursor:pointer;" onclick="openComplexDetail(${c.id}, ${a.pyeong})">
                         <td><strong>${a.pyeong}평</strong> <span style="color:#64748b; font-size:10px;">(${a.exclusive_area}㎡)</span></td>
+                        <td><span style="font-weight:600; color:#1e293b;">${hhStr}</span></td>
                         <td><strong style="color:#dc2626;">${formatCompactPrice(a.sale_avg)}</strong><br/><span style="font-size:10px; color:#64748b;">평당 ${(a.pyeong_price||0).toLocaleString()}만</span></td>
                         <td><strong style="color:#2563eb;">${formatCompactPrice(a.jeonse_avg)}</strong><br/><span style="font-size:10px; color:#64748b;">전세가율 ${jRatio}%</span></td>
                         <td>${a.wolse_deposit_avg ? `${formatCompactPrice(a.wolse_deposit_avg)}/${a.wolse_rent_avg}만` : '-'}</td>
