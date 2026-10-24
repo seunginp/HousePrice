@@ -1955,7 +1955,7 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <script src="./data.js"></script>
+    <script src="./data.js?v=20261024_0930"></script>
     <script>
         const PROP_TYPES = ['아파트', '오피스텔', '빌라/연립'];
         const SIDO_NAMES = ['서울특별시', '경기도'];
@@ -2076,14 +2076,24 @@
                     base_jeonse: arr[13],
                     lawd_cd: arr[14]
                 };
-                // 호갱노노 검증 데이터 사전 동기화
+                // 1. data.js 내 사전 적재된 전체 실제 평형 리스트 (arr[15])
+                if (Array.isArray(arr[15]) && arr[15].length > 0) {
+                    c.pyeong_list = arr[15];
+                }
+                // 2. 호갱노노 검증 데이터 사전 동기화 (최고층수, 세대수, 평형)
                 const hPreset = window.HOGANGNONO_PRESET_DATA && (window.HOGANGNONO_PRESET_DATA[c.name] || window.HOGANGNONO_PRESET_DATA[c.name.replace(/\s+/g, '')]);
                 if (hPreset) {
                     if (hPreset.max_floor) c.max_floor = hPreset.max_floor;
                     if (hPreset.households) c.total_households = hPreset.households;
+                    if (hPreset.pyeongs && hPreset.pyeongs.length > 0) {
+                        const cleanInts = hPreset.pyeongs.map(p => parseInt(String(p).replace(/\D/g, ''))).filter(n => !isNaN(n) && n > 0);
+                        if (cleanInts.length > 0) c.pyeong_list = cleanInts;
+                    }
                     c.hogang_data = hPreset;
                 }
-                c.pyeong_list = getComplexPyeongs(c);
+                if (!c.pyeong_list || c.pyeong_list.length === 0) {
+                    c.pyeong_list = getComplexPyeongs(c);
+                }
                 state.complexMap.set(c.id, c);
                 return c;
             });
@@ -3272,11 +3282,22 @@
 
             const activePyeongs = pyeongFilter ? pyeong_list.filter(x => x.pyeong === Number(pyeongFilter)) : pyeong_list;
             const targetP = activePyeongs[0] ? activePyeongs[0].pyeong : c.rep_pyeong;
-            const pRatio = targetP / c.rep_pyeong;
+            
+            // 평형별 실거래 시세 정밀 스케일링 (소형 환금성 프리미엄 + 대형 희소성 프리미엄 반영)
+            let pRatio = targetP / (c.rep_pyeong || 33);
+            let pPremium = 1.00;
+            if (targetP >= 50) pPremium = 1.05;
+            else if (targetP >= 40) pPremium = 1.03;
+            else if (targetP <= 25 && (c.rep_pyeong || 33) >= 33) pPremium = 1.03;
+            
+            let baseSale = Math.round((c.base_sale * pRatio * pPremium) / 50) * 50;
 
-            const baseSale = Math.round((c.base_sale * pRatio) / 50) * 50;
-            const baseJeonse = Math.round((c.base_jeonse * pRatio) / 50) * 50;
-            const baseOff = Math.round((baseSale * 0.69) / 10) * 10;
+            // 평형별 전세가율 차등 (소형 64%, 중형 58%, 대형 52%)
+            let jRatio = 0.58;
+            if (targetP <= 25) jRatio = 0.64;
+            else if (targetP >= 45) jRatio = 0.52;
+            let baseJeonse = Math.round((baseSale * jRatio) / 50) * 50;
+            let baseOff = Math.round((baseSale * 0.69) / 10) * 10;
 
             // 호갱노노 시세 계산 및 연동
             const hPreset = c.hogang_data || (window.HOGANGNONO_PRESET_DATA && (window.HOGANGNONO_PRESET_DATA[c.name] || window.HOGANGNONO_PRESET_DATA[c.name.replace(/\s+/g, '')]));
@@ -3344,9 +3365,18 @@
             });
 
             const area_breakdown = pyeong_list.map(pl => {
-                const r = pl.pyeong / c.rep_pyeong;
-                const sAvg = Math.round((c.base_sale * r) / 50) * 50;
-                const jAvg = Math.round((c.base_jeonse * r) / 50) * 50;
+                let r = pl.pyeong / (c.rep_pyeong || 33);
+                let prem = 1.00;
+                if (pl.pyeong >= 50) prem = 1.05;
+                else if (pl.pyeong >= 40) prem = 1.03;
+                else if (pl.pyeong <= 25 && (c.rep_pyeong || 33) >= 33) prem = 1.03;
+
+                const sAvg = Math.round((c.base_sale * r * prem) / 50) * 50;
+                let jR = 0.58;
+                if (pl.pyeong <= 25) jR = 0.64;
+                else if (pl.pyeong >= 45) jR = 0.52;
+                const jAvg = Math.round((sAvg * jR) / 50) * 50;
+
                 const wDep = Math.max(1000, Math.round((jAvg * 0.25) / 100) * 100);
                 const wRent = Math.max(35, Math.round(((jAvg - wDep) * 0.052 / 12) / 5) * 5);
                 const oAvg = Math.round((sAvg * 0.69) / 10) * 10;
