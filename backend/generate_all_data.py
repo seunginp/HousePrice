@@ -48,9 +48,78 @@ def format_yyyymm(raw_val, default_val="2026.12 예정"):
     return s
 
 
+def get_complex_pyeongs(name, prop_idx, households, rep_p, verified_reg):
+    match = verified_reg.get(name)
+    if not match:
+        for k, v in verified_reg.items():
+            if k in name or name in k:
+                match = v
+                break
+    if match and match.get('pyeongs'):
+        clean_ints = []
+        for p in match['pyeongs']:
+            try:
+                val = int(str(p).replace('평', '').replace('A','').replace('B','').replace('C','').replace('D','').strip())
+                if val not in clean_ints and val > 0:
+                    clean_ints.append(val)
+            except Exception:
+                pass
+        if clean_ints:
+            return sorted(clean_ints)
+
+    rp = rep_p or 33
+    if prop_idx == 1:  # 오피스텔
+        if rp <= 15:
+            return [10, 14, 18]
+        elif rp <= 22:
+            return [15, 19, 24]
+        else:
+            return sorted(list(set([21, rp, rp + 7])))
+    elif prop_idx == 2:  # 빌라/연립
+        return sorted(list(set([max(14, rp - 6), rp, rp + 5])))
+    else:  # 아파트
+        if households >= 1000:
+            if rp >= 45:
+                return [34, 42, 45, 52, 54, 62]
+            elif rp <= 25:
+                return [18, 22, 25, 33, 42]
+            else:
+                base_mid = 35 if rp >= 34 else 33
+                return [25, base_mid, 42, 45, 54]
+        elif households >= 500:
+            if rp >= 42:
+                return [34, 42, 45, 52]
+            elif rp <= 25:
+                return [21, 25, 33]
+            else:
+                base_mid = 35 if rp >= 34 else 33
+                return [25, base_mid, 42, 45]
+        elif households >= 200:
+            base_mid = 35 if rp >= 34 else (33 if rp >= 30 else rp)
+            if rp <= 25:
+                return [21, 25, 32]
+            else:
+                return [25, base_mid, 42]
+        else:
+            if rp <= 25:
+                return [22, rp]
+            else:
+                return [25, rp, rp + 9]
+
+
 def build_all_data():
     random.seed(20261022)
+    verified_reg = {}
+    v_path = "verified_hogang_registry.json"
+    if os.path.exists(v_path):
+        try:
+            with open(v_path, "r", encoding="utf-8") as vf:
+                verified_reg = json.load(vf)
+        except Exception:
+            pass
+
     with open("zigbang_seoul_gg_full.json", "r", encoding="utf-8") as f:
+        raw = json.load(f)
         raw = json.load(f)
 
     apts = raw.get("apartments", [])
@@ -136,10 +205,22 @@ def build_all_data():
         if jeonse_avg <= 0:
             jeonse_avg = int(round((sale_avg * random.uniform(0.56, 0.65)) / 100.0) * 100)
 
+        # Check verified registry for real max_floor
+        v_match = verified_reg.get(name)
+        if not v_match:
+            for k, v in verified_reg.items():
+                if k in name or name in k:
+                    v_match = v
+                    break
+        if v_match and v_match.get("max_floor"):
+            max_floor = v_match["max_floor"]
+
+        pyeongs = get_complex_pyeongs(name, prop_idx, households, rep_pyeong, verified_reg)
+
         sido_idx = 0 if sido == "서울특별시" else 1
         compact_complexes.append([
             int(zid), sido_idx, sigungu, dong, name, prop_idx,
-            lat, lng, build_year, households, max_floor, rep_pyeong, sale_avg, jeonse_avg, lawd_cd
+            lat, lng, build_year, households, max_floor, rep_pyeong, sale_avg, jeonse_avg, lawd_cd, pyeongs
         ])
 
         # 청약/분양 단지 추출 ('청약중', '분양임박', '분양예정', '사전청약마감', '입주예정', '청약마감')
@@ -282,7 +363,28 @@ def build_all_data():
         "subscriptions": subscriptions
     }
 
-    js_str = "window.STATIC_REAL_ESTATE_DATA = " + json.dumps(payload, ensure_ascii=False, separators=(",", ":")) + ";"
+    # Build clean Hogang preset
+    clean_preset = {}
+    for k, v in verified_reg.items():
+        if v and v.get("name"):
+            c_name = v["name"]
+            if c_name not in clean_preset:
+                clean_preset[c_name] = {
+                    "id": v.get("hogang_id"),
+                    "max_floor": v.get("max_floor"),
+                    "min_floor": v.get("min_floor"),
+                    "households": v.get("households"),
+                    "total_dong": v.get("total_dong"),
+                    "pyeongs": v.get("pyeongs"),
+                    "recent_price": v.get("recent_price"),
+                    "pyeong_price": v.get("pyeong_price"),
+                    "url": v.get("url")
+                }
+            if k != c_name and k not in clean_preset:
+                clean_preset[k] = clean_preset[c_name]
+
+    js_str = "window.STATIC_REAL_ESTATE_DATA = " + json.dumps(payload, ensure_ascii=False, separators=(",", ":")) + ";\n\n"
+    js_str += "window.HOGANGNONO_PRESET_DATA = " + json.dumps(clean_preset, ensure_ascii=False) + ";\n"
     with open("../frontend/data.js", "w", encoding="utf-8") as f:
         f.write(js_str)
     with open("../data.js", "w", encoding="utf-8") as f:
